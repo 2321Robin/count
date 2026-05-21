@@ -17,7 +17,6 @@ export function CreatureCard({ creature, onIncrement, onDecrement, onEdit, onRec
       <div className="cardHeader">
         <div>
           <h2>{creature.name}</h2>
-          <p>{creature.location || "未设置地点/活动"}</p>
         </div>
         <button type="button" className="ghost" onClick={() => onEdit(creature)}>编辑</button>
       </div>
@@ -29,7 +28,6 @@ export function CreatureCard({ creature, onIncrement, onDecrement, onEdit, onRec
       <div className="progress" aria-label={`${creature.name} 进度 ${percent}%`}>
         <div style={{ width: `${percent}%` }} />
       </div>
-      {creature.notes && <p className="notes">{creature.notes}</p>}
       <div className="actions">
         <button type="button" className="primary" onClick={() => onIncrement(creature.id)}>+1</button>
         <button type="button" onClick={() => onDecrement(creature.id)}>-1</button>

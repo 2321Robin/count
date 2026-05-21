@@ -38,6 +38,7 @@ describe("counter domain", () => {
       "雪怪",
     ]);
     expect(data.creatures[0]).toMatchObject({
+      targetCount: 80,
       currentEncounters: 0,
       totalEncounters: 0,
       isDefault: true,
@@ -107,9 +108,9 @@ describe("counter domain", () => {
     const data = createDefaultData();
     const added = addCreature(data, {
       name: "自定义精灵",
-      targetCount: 500,
-      location: "自定义地点",
-      notes: "自定义备注",
+      targetCount: 80,
+      location: "",
+      notes: "",
     });
     const custom = added.creatures[added.creatures.length - 1];
 
@@ -117,14 +118,16 @@ describe("counter domain", () => {
 
     const updated = updateCreature(added, custom.id, {
       name: "更新精灵",
-      targetCount: 600,
-      location: "更新地点",
-      notes: "更新备注",
+      targetCount: 90,
+      location: "",
+      notes: "",
     });
 
     expect(updated.creatures[updated.creatures.length - 1]).toMatchObject({
       name: "更新精灵",
-      targetCount: 600,
+      targetCount: 90,
+      location: "",
+      notes: "",
     });
 
     const removed = removeCreature(updated, custom.id);

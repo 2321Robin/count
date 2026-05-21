@@ -10,17 +10,15 @@ type Props = {
 
 export function CreatureEditor({ creature, onSave, onCancel }: Props) {
   const [name, setName] = useState(creature?.name ?? "");
-  const [targetCount, setTargetCount] = useState(String(creature?.targetCount ?? 500));
-  const [location, setLocation] = useState(creature?.location ?? "");
-  const [notes, setNotes] = useState(creature?.notes ?? "");
+  const [targetCount, setTargetCount] = useState(String(creature?.targetCount ?? 80));
 
   function submit(event: FormEvent) {
     event.preventDefault();
     onSave({
       name: name.trim() || "未命名精灵",
       targetCount: Math.max(1, Number(targetCount) || 1),
-      location: location.trim(),
-      notes: notes.trim(),
+      location: "",
+      notes: "",
     });
   }
 
@@ -29,8 +27,6 @@ export function CreatureEditor({ creature, onSave, onCancel }: Props) {
       <h2>{creature ? "编辑精灵" : "新增精灵"}</h2>
       <label>名称<input value={name} onChange={(event) => setName(event.target.value)} /></label>
       <label>目标次数<input type="number" min="1" value={targetCount} onChange={(event) => setTargetCount(event.target.value)} /></label>
-      <label>地点/活动<input value={location} onChange={(event) => setLocation(event.target.value)} /></label>
-      <label>备注<textarea value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
       <div className="row"><button type="submit">保存精灵</button><button type="button" onClick={onCancel}>取消</button></div>
     </form>
   );

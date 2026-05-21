@@ -14,7 +14,6 @@ export function HistoryList({ records }: Props) {
               <span>{record.date}</span>
               <span>本轮 {record.roundEncounters}</span>
               <span>历史 {record.totalEncountersAtRecord}</span>
-              {record.location && <span>{record.location}</span>}
               {record.notes && <em>{record.notes}</em>}
             </li>
           ))}
