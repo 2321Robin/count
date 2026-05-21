@@ -34,7 +34,9 @@ button:hover, .fileButton:hover { border-color: #7a8aa0; }
 .actions, .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .panel { padding: 18px; margin: 16px 0; }
 .panel label { display: grid; gap: 6px; margin-bottom: 12px; color: #4c5a70; }
+.panel .fileButton { display: inline-flex; align-items: center; margin: 0; color: #172033; }
 .panel input, .panel textarea { width: 100%; border: 1px solid #d8deea; border-radius: 12px; padding: 0.75rem; }
+.panel .fileButton .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .panel textarea { min-height: 88px; resize: vertical; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .message { color: #335c0f; }
