@@ -67,6 +67,22 @@ describe("counter domain", () => {
     expect(next.creatures[0].totalEncounters).toBe(2);
   });
 
+  it("does not decrement historical total after acquisition resets current round", () => {
+    const data = createDefaultData();
+    const creatureId = data.creatures[0].id;
+    const counted = incrementEncounter(incrementEncounter(data, creatureId), creatureId);
+    const recorded = recordAcquisition(counted, creatureId, {
+      date: "2026-05-22",
+      location: "",
+      notes: "",
+    });
+
+    const next = decrementEncounter(recorded, creatureId);
+
+    expect(next.creatures[0].currentEncounters).toBe(0);
+    expect(next.creatures[0].totalEncounters).toBe(2);
+  });
+
   it("adds, updates, and removes custom creatures", () => {
     const data = createDefaultData();
     const added = addCreature(data, {

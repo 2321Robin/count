@@ -20,11 +20,15 @@ export function incrementEncounter(data: AppData, creatureId: string): AppData {
 }
 
 export function decrementEncounter(data: AppData, creatureId: string): AppData {
-  return updateCreatureById(data, creatureId, (creature) => ({
-    ...creature,
-    currentEncounters: Math.max(0, creature.currentEncounters - 1),
-    totalEncounters: Math.max(0, creature.totalEncounters - 1),
-  }));
+  return updateCreatureById(data, creatureId, (creature) =>
+    creature.currentEncounters === 0
+      ? creature
+      : {
+          ...creature,
+          currentEncounters: creature.currentEncounters - 1,
+          totalEncounters: Math.max(0, creature.totalEncounters - 1),
+        },
+  );
 }
 
 export function recordAcquisition(data: AppData, creatureId: string, input: RecordInput): AppData {
