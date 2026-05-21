@@ -17,6 +17,25 @@ describe("App", () => {
     expect(screen.queryByText("Past")).not.toBeInTheDocument();
   });
 
+  it("switches and persists the color theme", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+
+    expect(screen.getByLabelText("主题")).toHaveValue("navy");
+    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "navy");
+
+    await user.selectOptions(screen.getByLabelText("主题"), "neon");
+
+    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "neon");
+    expect(localStorage.getItem("s2-capture-counter:theme")).toBe("neon");
+
+    unmount();
+    render(<App />);
+
+    expect(screen.getByLabelText("主题")).toHaveValue("neon");
+    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "neon");
+  });
+
   it("separates creature names from the counter controls", () => {
     render(<App />);
 

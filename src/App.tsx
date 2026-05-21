@@ -11,13 +11,23 @@ import { exportAppData, parseImportedData } from "./domain/importExport";
 import { loadAppData, saveAppData } from "./domain/storage";
 import type { AppData, Creature, CreatureInput, RecordInput } from "./domain/types";
 
+const THEME_KEY = "s2-capture-counter:theme";
+type Theme = "navy" | "fantasy" | "neon";
+
+function loadTheme(): Theme {
+  const theme = localStorage.getItem(THEME_KEY);
+  return theme === "fantasy" || theme === "neon" || theme === "navy" ? theme : "navy";
+}
+
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
+  const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [editing, setEditing] = useState<Creature | null | "new">(null);
   const [recording, setRecording] = useState<Creature | null>(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => saveAppData(data), [data]);
+  useEffect(() => localStorage.setItem(THEME_KEY, theme), [theme]);
 
   function apply(next: AppData) {
     setData(next);
@@ -69,14 +79,23 @@ export default function App() {
   }
 
   return (
-    <main className="app">
+    <main className="app" data-theme={theme}>
       <header className="hero">
         <div>
           <p className="eyebrow">Roco World S2</p>
           <h1>S2 捕捉计数器</h1>
           <p>按精灵记录遭遇次数、本轮进度和获得历史。</p>
         </div>
-        <button type="button" onClick={() => setEditing("new")}>新增精灵</button>
+        <div className="heroActions">
+          <label className="themePicker">主题
+            <select value={theme} onChange={(event) => setTheme(event.target.value as Theme)}>
+              <option value="navy">深蓝夜航</option>
+              <option value="fantasy">洛克幻想</option>
+              <option value="neon">霓虹赛季</option>
+            </select>
+          </label>
+          <button type="button" onClick={() => setEditing("new")}>新增精灵</button>
+        </div>
       </header>
       <HeaderStats stats={calculateStats(data)} />
       {editing && <CreatureEditor key={editing === "new" ? "new" : editing.id} creature={editing === "new" ? null : editing} onSave={saveCreature} onCancel={() => setEditing(null)} />}
