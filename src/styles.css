@@ -17,15 +17,18 @@ button:hover, .fileButton:hover { border-color: #7a8aa0; }
 .stats div { padding: 18px; background: #fff; }
 .stats span { display: block; font-size: 1.7rem; font-weight: 900; }
 .stats small { color: #66758c; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 16px 0; }
-.card { padding: 18px; }
+.grid { display: grid; gap: 10px; margin: 16px 0; }
+.card { padding: 0; }
+.counterRow { display: grid; grid-template-columns: minmax(110px, 180px) 1fr; overflow: hidden; }
+.creatureNamePane { display: grid; align-items: center; padding: 18px; border-right: 1px solid #e2e7ef; background: #fff; }
+.counterPane { display: grid; gap: 10px; padding: 14px 18px; background: #f8fafc; }
 .cardHeader { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
 .card h2, .panel h2 { margin: 0 0 8px; }
 .card p { margin: 0; color: #66758c; }
-.numbers { display: grid; gap: 6px; margin: 18px 0; }
-.numbers strong { font-size: 2rem; }
+.numbers { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.numbers strong { font-size: 1.2rem; }
 .numbers span { color: #4c5a70; }
-.progress { height: 10px; background: #edf1f6; border-radius: 999px; overflow: hidden; margin-bottom: 12px; }
+.progress { height: 8px; background: #e9eef5; border-radius: 999px; overflow: hidden; }
 .progress div { height: 100%; background: #172033; }
 .notes { border-left: 3px solid #d9e0ea; padding-left: 10px; }
 .actions, .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -38,4 +41,4 @@ button:hover, .fileButton:hover { border-color: #7a8aa0; }
 .history { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .history li { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px; border: 1px solid #e2e7ef; border-radius: 14px; }
 .history span, .history em { color: #66758c; }
-@media (max-width: 720px) { .hero { align-items: stretch; flex-direction: column; } .stats { grid-template-columns: repeat(2, 1fr); } .actions button { flex: 1 1 42%; } }
+@media (max-width: 720px) { .hero { align-items: stretch; flex-direction: column; } .stats { grid-template-columns: repeat(2, 1fr); } .counterRow { grid-template-columns: 1fr; } .creatureNamePane { border-right: 0; border-bottom: 1px solid #e2e7ef; } .actions button { flex: 1 1 42%; } }

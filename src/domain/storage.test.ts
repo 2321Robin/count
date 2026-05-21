@@ -34,6 +34,32 @@ describe("storage", () => {
     expect(loadAppData().creatures[0].name).toBe("已保存");
   });
 
+  it("migrates old default creature targets to 80 while keeping counts", () => {
+    const oldData = createDefaultData();
+    const saved = {
+      ...oldData,
+      creatures: oldData.creatures.map((creature, index) => ({
+        ...creature,
+        targetCount: index === 0 ? 500 : creature.targetCount,
+        currentEncounters: index === 0 ? 12 : creature.currentEncounters,
+        totalEncounters: index === 0 ? 34 : creature.totalEncounters,
+        location: index === 0 ? "限定异色精灵" : creature.location,
+        notes: index === 0 ? "Past" : creature.notes,
+      })),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+
+    const loaded = loadAppData();
+
+    expect(loaded.creatures[0]).toMatchObject({
+      targetCount: 80,
+      currentEncounters: 12,
+      totalEncounters: 34,
+      location: "",
+      notes: "",
+    });
+  });
+
   it("falls back to defaults for malformed storage", () => {
     localStorage.setItem(STORAGE_KEY, "not json");
 

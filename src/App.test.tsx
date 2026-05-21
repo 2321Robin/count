@@ -17,6 +17,15 @@ describe("App", () => {
     expect(screen.queryByText("Past")).not.toBeInTheDocument();
   });
 
+  it("separates creature names from the counter controls", () => {
+    render(<App />);
+
+    const firstRow = screen.getByRole("listitem", { name: /猴麦仔/ });
+    expect(firstRow.querySelector(".creatureNamePane")?.textContent).toContain("猴麦仔");
+    expect(firstRow.querySelector(".counterPane")?.textContent).toContain("本轮 0");
+    expect(firstRow.querySelector(".counterPane")?.textContent).toContain("+1");
+  });
+
   it("increments a creature encounter count", async () => {
     const user = userEvent.setup();
     render(<App />);
