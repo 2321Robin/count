@@ -12,7 +12,7 @@ export function DataManager({ message, onExport, onImport, onClear, onReset }: P
       <h2>数据管理</h2>
       <div className="row">
         <button type="button" onClick={onExport}>导出 JSON</button>
-        <label className="fileButton">导入 JSON<input type="file" accept="application/json" onChange={(event) => {
+        <label className="fileButton">导入 JSON<input className="visuallyHidden" type="file" accept="application/json" onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) onImport(file);
           event.currentTarget.value = "";

@@ -36,4 +36,17 @@ describe("App", () => {
 
     expect(screen.getByText("新精灵")).toBeInTheDocument();
   });
+
+  it("updates editor fields when switching directly between creatures", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const editButtons = screen.getAllByRole("button", { name: "编辑" });
+    await user.click(editButtons[0]);
+    expect(screen.getByLabelText("名称")).toHaveValue("S2 精灵 1");
+
+    await user.click(editButtons[1]);
+
+    expect(screen.getByLabelText("名称")).toHaveValue("S2 精灵 2");
+  });
 });

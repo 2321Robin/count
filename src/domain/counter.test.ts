@@ -91,7 +91,7 @@ describe("counter domain", () => {
       location: "自定义地点",
       notes: "自定义备注",
     });
-    const custom = added.creatures.at(-1)!;
+    const custom = added.creatures[added.creatures.length - 1];
 
     expect(custom).toMatchObject({ name: "自定义精灵", isDefault: false });
 
@@ -102,7 +102,7 @@ describe("counter domain", () => {
       notes: "更新备注",
     });
 
-    expect(updated.creatures.at(-1)).toMatchObject({
+    expect(updated.creatures[updated.creatures.length - 1]).toMatchObject({
       name: "更新精灵",
       targetCount: 600,
     });

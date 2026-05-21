@@ -79,7 +79,7 @@ export default function App() {
         <button type="button" onClick={() => setEditing("new")}>新增精灵</button>
       </header>
       <HeaderStats stats={calculateStats(data)} />
-      {editing && <CreatureEditor creature={editing === "new" ? null : editing} onSave={saveCreature} onCancel={() => setEditing(null)} />}
+      {editing && <CreatureEditor key={editing === "new" ? "new" : editing.id} creature={editing === "new" ? null : editing} onSave={saveCreature} onCancel={() => setEditing(null)} />}
       {recording && <RecordDialog creature={recording} onSave={saveRecord} onCancel={() => setRecording(null)} />}
       <CreatureGrid
         creatures={data.creatures}
