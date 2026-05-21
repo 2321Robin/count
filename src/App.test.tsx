@@ -36,6 +36,17 @@ describe("App", () => {
     expect(screen.getByText("历史 1")).toBeInTheDocument();
   });
 
+  it("sorts creature rows by current round count from high to low", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: "+1" })[1]);
+
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveAccessibleName("烟花团");
+    expect(rows[1]).toHaveAccessibleName("猴麦仔");
+  });
+
   it("adds a custom creature", async () => {
     const user = userEvent.setup();
     render(<App />);
