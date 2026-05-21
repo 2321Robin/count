@@ -14,9 +14,29 @@ import {
 describe("counter domain", () => {
   it("creates default data with S2 creatures", () => {
     const data = createDefaultData();
+    const defaultNames = data.creatures.map((creature) => creature.name);
 
     expect(data.version).toBe(1);
-    expect(data.creatures.length).toBeGreaterThan(0);
+    expect(defaultNames).toEqual([
+      "猴麦仔",
+      "烟花团",
+      "加油海葵",
+      "炫光迪迪",
+      "咕咕帽",
+      "小丑豆豆",
+      "小鼓象",
+      "牵线木偶",
+      "公平鸽",
+      "灵狐",
+      "小独角兽",
+      "嘟嘟煲",
+      "菊花梨",
+      "幽影树",
+      "小夜",
+      "恶魔叮",
+      "爆焰喷喷",
+      "雪怪",
+    ]);
     expect(data.creatures[0]).toMatchObject({
       currentEncounters: 0,
       totalEncounters: 0,

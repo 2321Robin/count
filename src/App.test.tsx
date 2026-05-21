@@ -11,7 +11,7 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
-    expect(screen.getByText("S2 精灵 1")).toBeInTheDocument();
+    expect(screen.getByText("猴麦仔")).toBeInTheDocument();
   });
 
   it("increments a creature encounter count", async () => {
@@ -43,10 +43,10 @@ describe("App", () => {
 
     const editButtons = screen.getAllByRole("button", { name: "编辑" });
     await user.click(editButtons[0]);
-    expect(screen.getByLabelText("名称")).toHaveValue("S2 精灵 1");
+    expect(screen.getByLabelText("名称")).toHaveValue("猴麦仔");
 
     await user.click(editButtons[1]);
 
-    expect(screen.getByLabelText("名称")).toHaveValue("S2 精灵 2");
+    expect(screen.getByLabelText("名称")).toHaveValue("烟花团");
   });
 });
