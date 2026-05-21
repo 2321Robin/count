@@ -107,5 +107,6 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "保存记录" }));
 
     expect(screen.getByText("手动记录备注")).toBeInTheDocument();
+    expect(screen.getByText("第 1 只")).toBeInTheDocument();
   });
 });

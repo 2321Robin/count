@@ -11,6 +11,7 @@ export function HistoryList({ records }: Props) {
           {records.map((record) => (
             <li key={record.id}>
               <strong>{record.creatureName}</strong>
+              <span>第 {record.acquisitionNumber} 只</span>
               <span>{record.date}</span>
               <span>本轮 {record.roundEncounters}</span>
               <span>历史 {record.totalEncountersAtRecord}</span>

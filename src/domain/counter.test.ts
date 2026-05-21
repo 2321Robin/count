@@ -79,6 +79,7 @@ describe("counter domain", () => {
     expect(next.records).toHaveLength(1);
     expect(next.records[0]).toMatchObject({
       creatureId,
+      acquisitionNumber: 1,
       roundEncounters: 2,
       totalEncountersAtRecord: 2,
       location: "S2 活动区",
@@ -86,6 +87,35 @@ describe("counter domain", () => {
     });
     expect(next.creatures[0].currentEncounters).toBe(0);
     expect(next.creatures[0].totalEncounters).toBe(2);
+  });
+
+  it("numbers acquisitions per creature", () => {
+    const data = createDefaultData();
+    const firstCreatureId = data.creatures[0].id;
+    const secondCreatureId = data.creatures[1].id;
+    const firstCounted = incrementEncounter(data, firstCreatureId);
+    const firstRecorded = recordAcquisition(firstCounted, firstCreatureId, {
+      date: "2026-05-22",
+      location: "",
+      notes: "",
+    });
+    const secondCounted = incrementEncounter(firstRecorded, secondCreatureId);
+    const secondRecorded = recordAcquisition(secondCounted, secondCreatureId, {
+      date: "2026-05-22",
+      location: "",
+      notes: "",
+    });
+    const firstAgainCounted = incrementEncounter(secondRecorded, firstCreatureId);
+
+    const next = recordAcquisition(firstAgainCounted, firstCreatureId, {
+      date: "2026-05-22",
+      location: "",
+      notes: "",
+    });
+
+    expect(next.records[0]).toMatchObject({ creatureId: firstCreatureId, acquisitionNumber: 2 });
+    expect(next.records[1]).toMatchObject({ creatureId: secondCreatureId, acquisitionNumber: 1 });
+    expect(next.records[2]).toMatchObject({ creatureId: firstCreatureId, acquisitionNumber: 1 });
   });
 
   it("does not decrement historical total after acquisition resets current round", () => {

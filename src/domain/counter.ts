@@ -34,6 +34,7 @@ export function decrementEncounter(data: AppData, creatureId: string): AppData {
 export function recordAcquisition(data: AppData, creatureId: string, input: RecordInput): AppData {
   const creature = data.creatures.find((item) => item.id === creatureId);
   if (!creature) return data;
+  const acquisitionNumber = data.records.filter((record) => record.creatureId === creatureId).length + 1;
 
   return {
     ...data,
@@ -46,6 +47,7 @@ export function recordAcquisition(data: AppData, creatureId: string, input: Reco
         creatureId,
         creatureName: creature.name,
         date: input.date,
+        acquisitionNumber,
         roundEncounters: creature.currentEncounters,
         totalEncountersAtRecord: creature.totalEncounters,
         location: input.location,

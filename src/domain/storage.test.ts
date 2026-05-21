@@ -60,6 +60,47 @@ describe("storage", () => {
     });
   });
 
+  it("migrates old records with per-creature acquisition numbers", () => {
+    const data = createDefaultData();
+    const oldRecords = [
+      {
+        id: "record-newest-first-creature",
+        creatureId: data.creatures[0].id,
+        creatureName: data.creatures[0].name,
+        date: "2026-05-24",
+        roundEncounters: 6,
+        totalEncountersAtRecord: 18,
+        location: "",
+        notes: "",
+      },
+      {
+        id: "record-other-creature",
+        creatureId: data.creatures[1].id,
+        creatureName: data.creatures[1].name,
+        date: "2026-05-23",
+        roundEncounters: 7,
+        totalEncountersAtRecord: 7,
+        location: "",
+        notes: "",
+      },
+      {
+        id: "record-oldest-first-creature",
+        creatureId: data.creatures[0].id,
+        creatureName: data.creatures[0].name,
+        date: "2026-05-22",
+        roundEncounters: 12,
+        totalEncountersAtRecord: 12,
+        location: "",
+        notes: "",
+      },
+    ];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, records: oldRecords }));
+
+    const loaded = loadAppData();
+
+    expect(loaded.records.map((record) => record.acquisitionNumber)).toEqual([2, 1, 1]);
+  });
+
   it("falls back to defaults for malformed storage", () => {
     localStorage.setItem(STORAGE_KEY, "not json");
 

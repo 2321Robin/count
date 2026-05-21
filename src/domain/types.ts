@@ -21,6 +21,7 @@ export type AcquisitionRecord = {
   creatureId: string;
   creatureName: string;
   date: string;
+  acquisitionNumber: number;
   roundEncounters: number;
   totalEncountersAtRecord: number;
   location: string;
