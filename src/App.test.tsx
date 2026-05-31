@@ -15,6 +15,7 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "多端同步（可选）" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "展开当前轮次" })).toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: /猴麦仔/ })).toBeInTheDocument();
     expect(screen.getAllByText("目标 80")[0]).toBeInTheDocument();
     expect(screen.queryByText("限定异色精灵")).not.toBeInTheDocument();
@@ -85,6 +86,7 @@ describe("App", () => {
     expect(screen.getByText("本轮 1")).toBeInTheDocument();
     expect(screen.getByText("历史 1")).toBeInTheDocument();
     expect(screen.getByText("本轮合计 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "展开当前轮次" })).toBeInTheDocument();
   });
 
   it("sorts creature rows by current round count from high to low", async () => {
@@ -130,6 +132,7 @@ describe("App", () => {
   it("records acquisition with current round total and second-level time", async () => {
     const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("button", { name: "展开当前轮次" }));
 
     await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
     await user.click(screen.getAllByRole("button", { name: "+1" })[1]);

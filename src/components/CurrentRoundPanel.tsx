@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AppData, Creature } from "../domain/types";
 import { formatRecordDate } from "../domain/dateTime";
 
@@ -17,6 +18,7 @@ export function CurrentRoundPanel({ data, onSetTargets, onStartNew, onReset }: P
   const activeIds = new Set(data.currentRound?.creatureIds ?? []);
   const activeCreatures = data.creatures.filter((creature) => activeIds.has(creature.id));
   const total = activeCreatures.reduce((sum, creature) => sum + creature.currentEncounters, 0);
+  const [isOpen, setIsOpen] = useState(false);
 
   function changeTargets(form: HTMLFormElement, isNewRound: boolean) {
     const ids = selectedIdsFromForm(form);
@@ -29,33 +31,42 @@ export function CurrentRoundPanel({ data, onSetTargets, onStartNew, onReset }: P
       <div className="sectionHeader">
         <div>
           <h2>当前轮次</h2>
-          <p>选择本轮一起统计的精灵；记录获得时会清空这些精灵的本轮计数。</p>
+          {isOpen && <p>选择本轮一起统计的精灵；记录获得时会清空这些精灵的本轮计数。</p>}
         </div>
-        <strong className="roundTotal">本轮合计 {total}</strong>
+        <div className="roundPanelActions">
+          <strong className="roundTotal">本轮合计 {total}</strong>
+          <button type="button" className="ghost" aria-expanded={isOpen} aria-controls="current-round-details" onClick={() => setIsOpen((value) => !value)}>
+            {isOpen ? "收起当前轮次" : "展开当前轮次"}
+          </button>
+        </div>
       </div>
-      {activeCreatures.length === 0 ? (
-        <p>还没有选择本轮精灵。点任意精灵 +1 会自动加入当前轮次。</p>
-      ) : (
+      {activeCreatures.length > 0 && (
         <div className="chips" aria-label="当前轮次精灵">
           {activeCreatures.map((creature) => <span key={creature.id}>{creature.name} {creature.currentEncounters}</span>)}
         </div>
       )}
-      {data.currentRound?.updatedAt && <p className="muted">最近调整：{formatRecordDate(data.currentRound.updatedAt)}</p>}
-      <form key={data.currentRound?.creatureIds.join("|") ?? ""} onSubmit={(event) => { event.preventDefault(); changeTargets(event.currentTarget, false); }}>
-        <div className="roundChoices">
-          {data.creatures.map((creature: Creature) => (
-            <label key={creature.id} className="roundChoice">
-              <input className="visuallyHidden" name="roundCreature" type="checkbox" value={creature.id} defaultChecked={activeIds.has(creature.id)} />
-              <span>{creature.name}</span>
-            </label>
-          ))}
+      {!isOpen && activeCreatures.length === 0 && <p className="muted">已收起。展开后可以选择本轮精灵。</p>}
+      {isOpen && (
+        <div id="current-round-details" className="roundDetails">
+          {activeCreatures.length === 0 && <p>还没有选择本轮精灵。点任意精灵 +1 会自动加入当前轮次。</p>}
+          {data.currentRound?.updatedAt && <p className="muted">最近调整：{formatRecordDate(data.currentRound.updatedAt)}</p>}
+          <form key={data.currentRound?.creatureIds.join("|") ?? ""} onSubmit={(event) => { event.preventDefault(); changeTargets(event.currentTarget, false); }}>
+            <div className="roundChoices">
+              {data.creatures.map((creature: Creature) => (
+                <label key={creature.id} className="roundChoice">
+                  <input className="visuallyHidden" name="roundCreature" type="checkbox" value={creature.id} defaultChecked={activeIds.has(creature.id)} />
+                  <span>{creature.name}</span>
+                </label>
+              ))}
+            </div>
+            <div className="row">
+              <button type="submit">更新本轮精灵</button>
+              <button type="button" onClick={(event) => changeTargets(event.currentTarget.form!, true)}>开始新一轮并清零</button>
+              <button type="button" onClick={onReset}>清空本轮计数</button>
+            </div>
+          </form>
         </div>
-        <div className="row">
-          <button type="submit">更新本轮精灵</button>
-          <button type="button" onClick={(event) => changeTargets(event.currentTarget.form!, true)}>开始新一轮并清零</button>
-          <button type="button" onClick={onReset}>清空本轮计数</button>
-        </div>
-      </form>
+      )}
     </section>
   );
 }

@@ -150,12 +150,12 @@ export default function App() {
           <button type="button" onClick={() => setEditing("new")}>新增精灵</button>
         </div>
       </header>
+      <CurrentRoundPanel data={data} onSetTargets={(ids) => apply(setCurrentRoundTargets(data, ids))} onStartNew={(ids) => apply(startNewRound(data, ids))} onReset={() => apply(resetCurrentRoundCounts(data))} />
       <SyncPanel config={syncConfig} busy={syncBusy} onSaveConfig={updateSyncConfig} onPush={pushSync} onPull={pullSync} onDisconnect={disconnectSync} />
       <HeaderStats stats={calculateStats(data)} />
       {editing && <CreatureEditor key={editing === "new" ? "new" : editing.id} creature={editing === "new" ? null : editing} onSave={saveCreature} onCancel={() => setEditing(null)} />}
       {recording && <RecordDialog creature={recording} onSave={saveRecord} onCancel={() => setRecording(null)} />}
       {recordingGift && <GiftedRecordDialog creatures={data.creatures} initialCreatureId={recordingGift.id} onSave={saveGiftedRecord} onCancel={() => setRecordingGift(null)} />}
-      <CurrentRoundPanel data={data} onSetTargets={(ids) => apply(setCurrentRoundTargets(data, ids))} onStartNew={(ids) => apply(startNewRound(data, ids))} onReset={() => apply(resetCurrentRoundCounts(data))} />
       <CreatureGrid
         creatures={data.creatures}
         onIncrement={(id) => apply(incrementEncounter(data, id))}

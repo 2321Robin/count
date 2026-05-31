@@ -117,6 +117,7 @@ select { border: 1px solid var(--border); border-radius: 12px; background: var(-
 .sectionHeader { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
 .sectionHeader p, .syncPanel p, .muted { margin: 0.35rem 0 0; color: var(--muted); }
 .roundTotal { color: var(--accent); font-size: 1.25rem; white-space: nowrap; }
+.roundPanelActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .chips span { border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; background: var(--surface-strong); color: var(--accent); }
 .roundChoices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
@@ -146,6 +147,7 @@ select { border: 1px solid var(--border); border-radius: 12px; background: var(-
   .counterRow { grid-template-columns: 1fr; }
   .creatureNamePane { border-right: 0; border-bottom: 1px solid var(--border); }
   .sectionHeader { flex-direction: column; }
+  .roundPanelActions { justify-content: flex-start; }
   .roundChoices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .roundTotal { white-space: normal; }
   .actions button { flex: 1 1 42%; }
