@@ -44,9 +44,9 @@ export function CurrentRoundPanel({ data, onSetTargets, onStartNew, onReset }: P
       <form key={data.currentRound?.creatureIds.join("|") ?? ""} onSubmit={(event) => { event.preventDefault(); changeTargets(event.currentTarget, false); }}>
         <div className="roundChoices">
           {data.creatures.map((creature: Creature) => (
-            <label key={creature.id}>
-              <input name="roundCreature" type="checkbox" value={creature.id} defaultChecked={activeIds.has(creature.id)} />
-              {creature.name}
+            <label key={creature.id} className="roundChoice">
+              <input className="visuallyHidden" name="roundCreature" type="checkbox" value={creature.id} defaultChecked={activeIds.has(creature.id)} />
+              <span>{creature.name}</span>
             </label>
           ))}
         </div>
