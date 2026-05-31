@@ -120,8 +120,8 @@ select { border: 1px solid var(--border); border-radius: 12px; background: var(-
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .chips span { border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; background: var(--surface-strong); color: var(--accent); }
 .roundChoices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
-.roundChoice { margin: 0; min-width: 0; cursor: pointer; }
-.roundChoice span { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0.65rem 0.5rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-strong); color: var(--text); font-weight: 700; text-align: center; transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease; }
+.roundChoice { margin: 0; min-width: 0; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.roundChoice span { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0.65rem 0.5rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-strong); color: var(--text); font-weight: 700; text-align: center; user-select: none; -webkit-user-select: none; transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease; }
 .roundChoice:hover span { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent); transform: translateY(-1px); }
 .roundChoice input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .roundChoice input:checked + span { border-color: transparent; background: linear-gradient(135deg, var(--primary-strong), var(--primary)); color: var(--primary-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
