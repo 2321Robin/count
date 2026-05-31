@@ -1,4 +1,5 @@
 import type { AppData, Creature } from "./types";
+import { formatDateTimeInput } from "./dateTime";
 
 const defaultCreatures: Array<Pick<Creature, "id" | "name" | "targetCount" | "location" | "notes">> = [
   { id: "limited-shiny-houmaizai", name: "猴麦仔", targetCount: 80, location: "", notes: "" },
@@ -23,7 +24,7 @@ const defaultCreatures: Array<Pick<Creature, "id" | "name" | "targetCount" | "lo
 
 export function createDefaultData(): AppData {
   return {
-    version: 1,
+    version: 2,
     creatures: defaultCreatures.map((creature) => ({
       ...creature,
       currentEncounters: 0,
@@ -31,6 +32,12 @@ export function createDefaultData(): AppData {
       isDefault: true,
     })),
     records: [],
+    giftedRecords: [],
+    currentRound: null,
     settings: { sortMode: "default" },
   };
+}
+
+export function createCurrentRound(creatureIds: string[]): AppData["currentRound"] {
+  return creatureIds.length === 0 ? null : { creatureIds, updatedAt: formatDateTimeInput() };
 }

@@ -1,4 +1,5 @@
 import type { AcquisitionRecord } from "../domain/types";
+import { formatRecordDate } from "../domain/dateTime";
 
 type Props = { records: AcquisitionRecord[] };
 
@@ -12,8 +13,9 @@ export function HistoryList({ records }: Props) {
             <li key={record.id}>
               <strong>{record.creatureName}</strong>
               <span>第 {record.acquisitionNumber} 只</span>
-              <span>{record.date}</span>
+              <span>{formatRecordDate(record.date)}</span>
               <span>本轮 {record.roundEncounters}</span>
+              {record.roundBreakdown.length > 1 && <span>明细 {record.roundBreakdown.map((item) => `${item.creatureName} ${item.encounters}`).join(" / ")}</span>}
               <span>历史 {record.totalEncountersAtRecord}</span>
               {record.notes && <em>{record.notes}</em>}
             </li>

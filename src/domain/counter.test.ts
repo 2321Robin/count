@@ -5,9 +5,13 @@ import {
   addCreature,
   calculateStats,
   decrementEncounter,
+  getCurrentRoundTotal,
   incrementEncounter,
   recordAcquisition,
+  recordGiftedCapture,
   removeCreature,
+  setCurrentRoundTargets,
+  startNewRound,
   updateCreature,
 } from "./counter";
 
@@ -16,7 +20,7 @@ describe("counter domain", () => {
     const data = createDefaultData();
     const defaultNames = data.creatures.map((creature) => creature.name);
 
-    expect(data.version).toBe(1);
+    expect(data.version).toBe(2);
     expect(defaultNames).toEqual([
       "猴麦仔",
       "烟花团",
@@ -43,9 +47,11 @@ describe("counter domain", () => {
       totalEncounters: 0,
       isDefault: true,
     });
+    expect(data.giftedRecords).toEqual([]);
+    expect(data.currentRound).toBeNull();
   });
 
-  it("increments current and total encounters", () => {
+  it("increments current and total encounters and joins the active round", () => {
     const data = createDefaultData();
     const creatureId = data.creatures[0].id;
 
@@ -53,6 +59,7 @@ describe("counter domain", () => {
 
     expect(next.creatures[0].currentEncounters).toBe(1);
     expect(next.creatures[0].totalEncounters).toBe(1);
+    expect(next.currentRound?.creatureIds).toEqual([creatureId]);
   });
 
   it("decrements counts without going below zero", () => {
@@ -65,12 +72,20 @@ describe("counter domain", () => {
     expect(next.creatures[0].totalEncounters).toBe(0);
   });
 
-  it("records acquisition and resets current round only", () => {
+  it("records acquisition and resets all current round targets", () => {
     const data = createDefaultData();
-    const creatureId = data.creatures[0].id;
-    const counted = incrementEncounter(incrementEncounter(data, creatureId), creatureId);
+    const firstCreatureId = data.creatures[0].id;
+    const secondCreatureId = data.creatures[1].id;
+    const round = setCurrentRoundTargets(data, [firstCreatureId, secondCreatureId]);
+    const counted = incrementEncounter(
+      incrementEncounter(
+        incrementEncounter(round, firstCreatureId),
+        firstCreatureId,
+      ),
+      secondCreatureId,
+    );
 
-    const next = recordAcquisition(counted, creatureId, {
+    const next = recordAcquisition(counted, firstCreatureId, {
       date: "2026-05-22",
       location: "S2 活动区",
       notes: "测试记录",
@@ -78,15 +93,42 @@ describe("counter domain", () => {
 
     expect(next.records).toHaveLength(1);
     expect(next.records[0]).toMatchObject({
-      creatureId,
+      creatureId: firstCreatureId,
       acquisitionNumber: 1,
-      roundEncounters: 2,
+      roundEncounters: 3,
       totalEncountersAtRecord: 2,
       location: "S2 活动区",
       notes: "测试记录",
     });
+    expect(next.records[0].roundBreakdown).toEqual([
+      { creatureId: firstCreatureId, creatureName: data.creatures[0].name, encounters: 2 },
+      { creatureId: secondCreatureId, creatureName: data.creatures[1].name, encounters: 1 },
+    ]);
+    expect(next.records[0].date).toBe("2026-05-22T00:00:00");
     expect(next.creatures[0].currentEncounters).toBe(0);
+    expect(next.creatures[1].currentEncounters).toBe(0);
     expect(next.creatures[0].totalEncounters).toBe(2);
+    expect(next.creatures[1].totalEncounters).toBe(1);
+    expect(next.currentRound?.creatureIds).toEqual([firstCreatureId, secondCreatureId]);
+  });
+
+  it("keeps unrelated current round counts when recording outside active targets", () => {
+    const data = createDefaultData();
+    const firstCreatureId = data.creatures[0].id;
+    const secondCreatureId = data.creatures[1].id;
+    const firstCounted = incrementEncounter(data, firstCreatureId);
+    const round = setCurrentRoundTargets(firstCounted, [secondCreatureId]);
+    const counted = incrementEncounter(round, secondCreatureId);
+
+    const next = recordAcquisition(counted, firstCreatureId, {
+      date: "2026-05-22T08:09:10",
+      location: "",
+      notes: "",
+    });
+
+    expect(next.records[0].roundEncounters).toBe(1);
+    expect(next.creatures[0].currentEncounters).toBe(0);
+    expect(next.creatures[1].currentEncounters).toBe(1);
   });
 
   it("numbers acquisitions per creature", () => {
@@ -134,6 +176,45 @@ describe("counter domain", () => {
     expect(next.creatures[0].totalEncounters).toBe(2);
   });
 
+  it("starts a new round by resetting current counters without touching totals", () => {
+    const data = createDefaultData();
+    const firstCreatureId = data.creatures[0].id;
+    const secondCreatureId = data.creatures[1].id;
+    const counted = incrementEncounter(incrementEncounter(data, firstCreatureId), secondCreatureId);
+
+    const next = startNewRound(counted, [secondCreatureId]);
+
+    expect(getCurrentRoundTotal(next)).toBe(0);
+    expect(next.currentRound?.creatureIds).toEqual([secondCreatureId]);
+    expect(next.creatures[0].totalEncounters).toBe(1);
+    expect(next.creatures[1].totalEncounters).toBe(1);
+  });
+
+  it("records gifted captures without changing own counters or own history", () => {
+    const data = createDefaultData();
+    const creatureId = data.creatures[0].id;
+    const counted = incrementEncounter(data, creatureId);
+
+    const next = recordGiftedCapture(counted, {
+      creatureId,
+      date: "2026-05-22T08:09:10",
+      giftedBy: "朋友",
+      notes: "送的",
+    });
+
+    expect(next.records).toHaveLength(0);
+    expect(next.giftedRecords).toHaveLength(1);
+    expect(next.giftedRecords[0]).toMatchObject({
+      creatureId,
+      creatureName: data.creatures[0].name,
+      receivedAt: "2026-05-22T08:09:10",
+      giftedBy: "朋友",
+      notes: "送的",
+    });
+    expect(next.creatures[0].currentEncounters).toBe(1);
+    expect(next.creatures[0].totalEncounters).toBe(1);
+  });
+
   it("adds, updates, and removes custom creatures", () => {
     const data = createDefaultData();
     const added = addCreature(data, {
@@ -160,8 +241,10 @@ describe("counter domain", () => {
       notes: "",
     });
 
-    const removed = removeCreature(updated, custom.id);
+    const gifted = recordGiftedCapture(updated, { creatureId: custom.id, date: "2026-05-22", giftedBy: "", notes: "" });
+    const removed = removeCreature(gifted, custom.id);
     expect(removed.creatures.some((creature) => creature.id === custom.id)).toBe(false);
+    expect(removed.giftedRecords.some((record) => record.creatureId === custom.id)).toBe(false);
   });
 
   it("calculates aggregate stats", () => {
@@ -173,12 +256,14 @@ describe("counter domain", () => {
       location: "",
       notes: "",
     });
+    const gifted = recordGiftedCapture(recorded, { creatureId, date: "2026-05-23", giftedBy: "", notes: "" });
 
-    expect(calculateStats(recorded)).toEqual({
-      creatureCount: recorded.creatures.length,
+    expect(calculateStats(gifted)).toEqual({
+      creatureCount: gifted.creatures.length,
       currentRoundTotal: 0,
       historicalTotal: 2,
       recordCount: 1,
+      giftedRecordCount: 1,
     });
   });
 });

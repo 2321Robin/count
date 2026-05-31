@@ -95,7 +95,7 @@ select { border: 1px solid var(--border); border-radius: 12px; background: var(-
 .themePicker { display: grid; gap: 6px; color: var(--muted); font-size: 0.85rem; }
 .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.75rem; font-weight: 800; }
 
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; overflow: hidden; margin-bottom: 16px; }
+.stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; overflow: hidden; margin-bottom: 16px; }
 .stats div { padding: 18px; background: var(--surface-strong); }
 .stats span { display: block; font-size: 1.7rem; font-weight: 900; }
 .stats small { color: var(--muted); }
@@ -114,11 +114,19 @@ select { border: 1px solid var(--border); border-radius: 12px; background: var(-
 .progress div { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); }
 .notes { border-left: 3px solid var(--border); padding-left: 10px; }
 .actions, .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sectionHeader { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.sectionHeader p, .syncPanel p, .muted { margin: 0.35rem 0 0; color: var(--muted); }
+.roundTotal { color: var(--accent); font-size: 1.25rem; white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.chips span { border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; background: var(--surface-strong); color: var(--accent); }
+.roundChoices { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px 12px; margin: 14px 0; }
+.roundChoices label { display: flex; gap: 8px; align-items: center; margin: 0; color: var(--text); }
+.roundChoices input { width: auto; }
 
 .panel { padding: 18px; margin: 16px 0; }
 .panel label { display: grid; gap: 6px; margin-bottom: 12px; color: var(--muted); }
 .panel .fileButton { display: inline-flex; align-items: center; margin: 0; color: var(--text); }
-.panel input, .panel textarea { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem; background: var(--surface-strong); color: var(--text); }
+.panel input:not([type="checkbox"]), .panel textarea, .panel select { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem; background: var(--surface-strong); color: var(--text); }
 .panel .fileButton .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .panel textarea { min-height: 88px; resize: vertical; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -134,5 +142,7 @@ select { border: 1px solid var(--border); border-radius: 12px; background: var(-
   .stats { grid-template-columns: repeat(2, 1fr); }
   .counterRow { grid-template-columns: 1fr; }
   .creatureNamePane { border-right: 0; border-bottom: 1px solid var(--border); }
+  .sectionHeader { flex-direction: column; }
+  .roundTotal { white-space: normal; }
   .actions button { flex: 1 1 42%; }
 }

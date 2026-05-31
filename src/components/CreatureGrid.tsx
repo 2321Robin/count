@@ -7,10 +7,11 @@ type Props = {
   onDecrement: (id: string) => void;
   onEdit: (creature: Creature) => void;
   onRecord: (creature: Creature) => void;
+  onRecordGift: (creature: Creature) => void;
   onRemove: (id: string) => void;
 };
 
-export function CreatureGrid({ creatures, onIncrement, onDecrement, onEdit, onRecord, onRemove }: Props) {
+export function CreatureGrid({ creatures, onIncrement, onDecrement, onEdit, onRecord, onRecordGift, onRemove }: Props) {
   const sortedCreatures = creatures
     .map((creature, index) => ({ creature, index }))
     .sort((left, right) => right.creature.currentEncounters - left.creature.currentEncounters || left.index - right.index)
@@ -26,6 +27,7 @@ export function CreatureGrid({ creatures, onIncrement, onDecrement, onEdit, onRe
           onDecrement={onDecrement}
           onEdit={onEdit}
           onRecord={onRecord}
+          onRecordGift={onRecordGift}
           onRemove={onRemove}
         />
       ))}

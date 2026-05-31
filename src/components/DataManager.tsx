@@ -20,6 +20,7 @@ export function DataManager({ message, onExport, onImport, onClear, onReset }: P
         <button type="button" className="danger" onClick={onClear}>清空所有数据</button>
         <button type="button" onClick={onReset}>重置默认数据</button>
       </div>
+      <p className="muted">导出前建议先保存一份备份；导入会自动兼容旧版数据并升级到新版结构。</p>
       {message && <p className="message">{message}</p>}
     </section>
   );

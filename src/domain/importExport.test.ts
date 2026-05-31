@@ -3,23 +3,104 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { normalizeRecordDate } from "./dateTime";
 import { createDefaultData } from "./defaultData";
 import { exportAppData, parseImportedData } from "./importExport";
+
+describe("date time helpers", () => {
+  it("normalizes record dates to second precision", () => {
+    expect(normalizeRecordDate("2026-05-22")).toBe("2026-05-22T00:00:00");
+    expect(normalizeRecordDate("2026-05-22T08:09")).toBe("2026-05-22T08:09:00");
+    expect(normalizeRecordDate("2026-05-22T08:09:10")).toBe("2026-05-22T08:09:10");
+  });
+});
 
 describe("import export", () => {
   it("exports formatted JSON", () => {
     const json = exportAppData(createDefaultData());
 
-    expect(JSON.parse(json).version).toBe(1);
+    expect(JSON.parse(json).version).toBe(2);
     expect(json).toContain("\n");
   });
 
-  it("parses valid imported data", () => {
+  it("parses valid imported v2 data", () => {
     const data = createDefaultData();
     const result = parseImportedData(JSON.stringify(data));
 
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data.creatures).toHaveLength(data.creatures.length);
+  });
+
+  it("parses and migrates valid imported v1 data", () => {
+    const data = createDefaultData();
+    const { giftedRecords: _giftedRecords, currentRound: _currentRound, ...v1Data } = data;
+    const result = parseImportedData(JSON.stringify({ ...v1Data, version: 1 }));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.version).toBe(2);
+      expect(result.data.giftedRecords).toEqual([]);
+      expect(result.data.currentRound).toBeNull();
+    }
+  });
+
+  it("accepts record timestamps with seconds", () => {
+    const data = createDefaultData();
+    const result = parseImportedData(JSON.stringify({
+      ...data,
+      records: [{
+        id: "record-1",
+        creatureId: data.creatures[0].id,
+        creatureName: data.creatures[0].name,
+        date: "2026-05-22T08:09:10",
+        acquisitionNumber: 1,
+        roundEncounters: 5,
+        roundBreakdown: [{ creatureId: data.creatures[0].id, creatureName: data.creatures[0].name, encounters: 5 }],
+        totalEncountersAtRecord: 25,
+        location: "S2 区域",
+        notes: "",
+      }],
+    }));
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts gifted records", () => {
+    const data = createDefaultData();
+    const result = parseImportedData(JSON.stringify({
+      ...data,
+      giftedRecords: [{
+        id: "gift-1",
+        creatureId: data.creatures[0].id,
+        creatureName: data.creatures[0].name,
+        receivedAt: "2026-05-22T08:09:10",
+        giftedBy: "朋友",
+        notes: "送的",
+      }],
+    }));
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects records with invalid date formats", () => {
+    const data = createDefaultData();
+    const result = parseImportedData(JSON.stringify({
+      ...data,
+      records: [{
+        id: "record-1",
+        creatureId: data.creatures[0].id,
+        creatureName: data.creatures[0].name,
+        date: "2026/05/22",
+        acquisitionNumber: 1,
+        roundEncounters: 5,
+        roundBreakdown: [{ creatureId: data.creatures[0].id, creatureName: data.creatures[0].name, encounters: 5 }],
+        totalEncountersAtRecord: 25,
+        location: "S2 区域",
+        notes: "",
+      }],
+    }));
+
+    expect(result).toEqual({ ok: false, error: "导入数据结构不完整。" });
   });
 
   it("rejects malformed JSON", () => {
@@ -29,7 +110,7 @@ describe("import export", () => {
   });
 
   it("rejects data with missing required fields", () => {
-    const result = parseImportedData(JSON.stringify({ version: 1, creatures: [] }));
+    const result = parseImportedData(JSON.stringify({ version: 2, creatures: [] }));
 
     expect(result).toEqual({ ok: false, error: "导入数据结构不完整。" });
   });
@@ -89,7 +170,9 @@ describe("import export", () => {
             creatureId: "missing-creature",
             creatureName: data.creatures[0].name,
             date: "2026-05-22",
+            acquisitionNumber: 1,
             roundEncounters: 5,
+            roundBreakdown: [{ creatureId: data.creatures[0].id, creatureName: data.creatures[0].name, encounters: 5 }],
             totalEncountersAtRecord: 25,
             location: "S2 区域",
             notes: "",
@@ -101,6 +184,23 @@ describe("import export", () => {
     expect(result).toEqual({ ok: false, error: "导入数据结构不完整。" });
   });
 
+  it("rejects gifted records whose creature ID does not exist", () => {
+    const data = createDefaultData();
+    const result = parseImportedData(JSON.stringify({
+      ...data,
+      giftedRecords: [{
+        id: "gift-1",
+        creatureId: "missing-creature",
+        creatureName: data.creatures[0].name,
+        receivedAt: "2026-05-22T08:09:10",
+        giftedBy: "朋友",
+        notes: "送的",
+      }],
+    }));
+
+    expect(result).toEqual({ ok: false, error: "导入数据结构不完整。" });
+  });
+
   it("rejects duplicate record IDs", () => {
     const data = createDefaultData();
     const record = {
@@ -108,7 +208,9 @@ describe("import export", () => {
       creatureId: data.creatures[0].id,
       creatureName: data.creatures[0].name,
       date: "2026-05-22",
+      acquisitionNumber: 1,
       roundEncounters: 5,
+      roundBreakdown: [{ creatureId: data.creatures[0].id, creatureName: data.creatures[0].name, encounters: 5 }],
       totalEncountersAtRecord: 25,
       location: "S2 区域",
       notes: "",

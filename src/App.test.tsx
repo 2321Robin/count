@@ -1,17 +1,21 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
 describe("App", () => {
   beforeEach(() => localStorage.clear());
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it("renders the counter dashboard", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
-    expect(screen.getByText("猴麦仔")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "多端同步（可选）" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /猴麦仔/ })).toBeInTheDocument();
     expect(screen.getAllByText("目标 80")[0]).toBeInTheDocument();
     expect(screen.queryByText("限定异色精灵")).not.toBeInTheDocument();
     expect(screen.queryByText("Past")).not.toBeInTheDocument();
@@ -36,6 +40,33 @@ describe("App", () => {
     expect(screen.getByRole("main")).toHaveAttribute("data-theme", "neon");
   });
 
+  it("saves optional sync configuration without affecting local use", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(screen.getByLabelText("GitHub Token"), "token-1");
+    await user.type(screen.getByLabelText("Gist ID"), "gist-1");
+    await user.click(screen.getByRole("button", { name: "保存同步配置" }));
+
+    expect(localStorage.getItem("s2-capture-counter:github-token")).toBe("token-1");
+    expect(localStorage.getItem("s2-capture-counter:gist-id")).toBe("gist-1");
+    expect(screen.getByText("同步配置已保存。本机离线数据仍会继续保存。")).toBeInTheDocument();
+  });
+
+  it("pushes current data to a private gist and stores the new gist id", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "gist-created" }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await user.type(screen.getByLabelText("GitHub Token"), "token-1");
+    await user.click(screen.getByRole("button", { name: "上传本机数据" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("https://api.github.com/gists", expect.objectContaining({ method: "POST" }));
+    expect(localStorage.getItem("s2-capture-counter:gist-id")).toBe("gist-created");
+    expect(screen.getByText("上传成功。已保存 Gist ID。")).toBeInTheDocument();
+  });
+
   it("separates creature names from the counter controls", () => {
     render(<App />);
 
@@ -53,6 +84,7 @@ describe("App", () => {
 
     expect(screen.getByText("本轮 1")).toBeInTheDocument();
     expect(screen.getByText("历史 1")).toBeInTheDocument();
+    expect(screen.getByText("本轮合计 1")).toBeInTheDocument();
   });
 
   it("sorts creature rows by current round count from high to low", async () => {
@@ -79,7 +111,7 @@ describe("App", () => {
     await user.type(screen.getByLabelText("目标次数"), "300");
     await user.click(screen.getByRole("button", { name: "保存精灵" }));
 
-    expect(screen.getByText("新精灵")).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /新精灵/ })).toBeInTheDocument();
   });
 
   it("updates editor fields when switching directly between creatures", async () => {
@@ -95,18 +127,48 @@ describe("App", () => {
     expect(screen.getByLabelText("名称")).toHaveValue("烟花团");
   });
 
-  it("keeps notes only when recording an acquisition", async () => {
+  it("records acquisition with current round total and second-level time", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "+1" })[1]);
+    const roundPanel = screen.getByRole("region", { name: "当前轮次" });
+    expect(within(roundPanel).getByText("本轮合计 2")).toBeInTheDocument();
+
     await user.click(screen.getAllByRole("button", { name: "记录获得" })[0]);
 
+    expect(screen.getByLabelText("时间")).toHaveAttribute("step", "1");
     expect(screen.queryByLabelText("地点/活动")).not.toBeInTheDocument();
+    await user.clear(screen.getByLabelText("时间"));
+    await user.type(screen.getByLabelText("时间"), "2026-05-22T08:09:10");
     await user.type(screen.getByLabelText("备注"), "手动记录备注");
     await user.click(screen.getByRole("button", { name: "保存记录" }));
 
     expect(screen.getByText("手动记录备注")).toBeInTheDocument();
-    expect(screen.getByText("第 1 只")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent("2026-05-22 08:09:10");
+    expect(screen.getByText("本轮 2")).toBeInTheDocument();
+    expect(screen.getByText(/明细/)).toHaveTextContent("猴麦仔 1 / 烟花团 1");
+    expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
+    expect(screen.getByRole("listitem", { name: /烟花团/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
+  });
+
+  it("records gifted captures without affecting own capture stats", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "记录赠送" })[0]);
+    await user.clear(screen.getByLabelText("时间"));
+    await user.type(screen.getByLabelText("时间"), "2026-05-22T08:09:10");
+    await user.type(screen.getByLabelText("来源/赠送人"), "朋友");
+    await user.type(screen.getByLabelText("备注"), "送的");
+    await user.click(screen.getByRole("button", { name: "保存赠送记录" }));
+
+    expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent("还没有记录。");
+    expect(screen.getByRole("heading", { name: "别人赠送记录" }).closest("section")).toHaveTextContent("朋友");
+    expect(screen.getByRole("heading", { name: "别人赠送记录" }).closest("section")).toHaveTextContent("送的");
+    expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 1");
+    expect(screen.getByText("赠送记录").previousSibling).toHaveTextContent("1");
   });
 });
