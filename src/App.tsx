@@ -18,11 +18,15 @@ import type { SyncConfig } from "./domain/sync";
 import type { AppData, Creature, CreatureInput, GiftedRecordInput, RecordInput } from "./domain/types";
 
 const THEME_KEY = "s2-capture-counter:theme";
-type Theme = "navy" | "fantasy" | "neon";
+type Theme = "fantasy" | "navy" | "neon" | "forest" | "sunset" | "mono";
+
+function isTheme(value: string | null): value is Theme {
+  return value === "fantasy" || value === "navy" || value === "neon" || value === "forest" || value === "sunset" || value === "mono";
+}
 
 function loadTheme(): Theme {
   const theme = localStorage.getItem(THEME_KEY);
-  return theme === "fantasy" || theme === "neon" || theme === "navy" ? theme : "navy";
+  return isTheme(theme) ? theme : "fantasy";
 }
 
 export default function App() {
@@ -162,9 +166,12 @@ export default function App() {
         <div className="heroActions">
           <label className="themePicker">主题
             <select value={theme} onChange={(event) => setTheme(event.target.value as Theme)}>
-              <option value="navy">深蓝夜航</option>
               <option value="fantasy">洛克幻想</option>
+              <option value="navy">深蓝夜航</option>
               <option value="neon">霓虹赛季</option>
+              <option value="forest">森野薄荷</option>
+              <option value="sunset">落日橙粉</option>
+              <option value="mono">纸白墨黑</option>
             </select>
           </label>
           <button type="button" onClick={() => setEditing("new")}>新增精灵</button>

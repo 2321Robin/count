@@ -28,19 +28,22 @@ describe("App", () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
 
-    expect(screen.getByLabelText("主题")).toHaveValue("navy");
-    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "navy");
+    expect(screen.getByLabelText("主题")).toHaveValue("fantasy");
+    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "fantasy");
 
-    await user.selectOptions(screen.getByLabelText("主题"), "neon");
+    await user.selectOptions(screen.getByLabelText("主题"), "sunset");
 
-    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "neon");
-    expect(localStorage.getItem("s2-capture-counter:theme")).toBe("neon");
+    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "sunset");
+    expect(localStorage.getItem("s2-capture-counter:theme")).toBe("sunset");
 
     unmount();
     render(<App />);
 
-    expect(screen.getByLabelText("主题")).toHaveValue("neon");
-    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "neon");
+    expect(screen.getByLabelText("主题")).toHaveValue("sunset");
+    expect(screen.getByRole("main")).toHaveAttribute("data-theme", "sunset");
+    expect(screen.getByRole("option", { name: "森野薄荷" })).toHaveValue("forest");
+    expect(screen.getByRole("option", { name: "落日橙粉" })).toHaveValue("sunset");
+    expect(screen.getByRole("option", { name: "纸白墨黑" })).toHaveValue("mono");
   });
 
   it("saves optional sync configuration without affecting local use", async () => {
