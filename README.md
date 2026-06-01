@@ -31,6 +31,22 @@
 - `拉取云端数据`：把 Gist 中的数据拉到当前设备。会覆盖本机数据。
 - `退出同步`：清除本机保存的 Token 和 Gist ID，不会删除本机计数数据。
 
+获取 GitHub Token 的步骤：
+
+1. 登录 GitHub。
+2. 点击右上角头像，进入 `Settings`。
+3. 在左侧菜单底部进入 `Developer settings`。
+4. 进入 `Personal access tokens`。
+5. 推荐选择 `Tokens (classic)`。
+6. 点击 `Generate new token`，再选择 `Generate new token (classic)`。
+7. `Note` 可以填写 `S2 捕捉计数器`，方便以后识别。
+8. `Expiration` 按自己需要选择有效期；如果不想定期更换，可以选较长时间，但请妥善保管。
+9. 在权限列表里只勾选 `gist`，不要勾选其它不需要的权限。
+10. 点击页面底部的 `Generate token`。
+11. 复制生成的 token，粘贴到网页里的 `GitHub Token` 输入框。
+
+注意：Token 只会在 GitHub 生成后显示一次。如果忘记或丢失，不能查看原 token，只能删除后重新生成。
+
 推荐流程：
 
 1. 第一台设备填写 `GitHub Token`，`Gist ID` 留空。
