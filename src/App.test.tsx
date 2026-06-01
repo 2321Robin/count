@@ -16,6 +16,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "多端同步（可选）" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "展开当前轮次" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "展开多端同步" })).toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: /猴麦仔/ })).toBeInTheDocument();
     expect(screen.getAllByText("目标 80")[0]).toBeInTheDocument();
     expect(screen.queryByText("限定异色精灵")).not.toBeInTheDocument();
@@ -44,6 +45,7 @@ describe("App", () => {
   it("saves optional sync configuration without affecting local use", async () => {
     const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("button", { name: "展开多端同步" }));
 
     await user.type(screen.getByLabelText("GitHub Token"), "token-1");
     await user.type(screen.getByLabelText("Gist ID"), "gist-1");
@@ -60,6 +62,7 @@ describe("App", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
+    await user.click(screen.getByRole("button", { name: "展开多端同步" }));
     await user.type(screen.getByLabelText("GitHub Token"), "token-1");
     await user.click(screen.getByRole("button", { name: "上传本机数据" }));
 
