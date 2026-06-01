@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CreatureEditor } from "./components/CreatureEditor";
 import { CreatureGrid } from "./components/CreatureGrid";
 import { CurrentRoundPanel } from "./components/CurrentRoundPanel";
@@ -34,9 +34,19 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [syncConfig, setSyncConfig] = useState<SyncConfig>(() => loadSyncConfig());
   const [syncBusy, setSyncBusy] = useState(false);
+  const recordDialogRef = useRef<HTMLDivElement>(null);
+  const giftedRecordDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => saveAppData(data), [data]);
   useEffect(() => localStorage.setItem(THEME_KEY, theme), [theme]);
+
+  useEffect(() => {
+    if (recording) recordDialogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [recording]);
+
+  useEffect(() => {
+    if (recordingGift) giftedRecordDialogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [recordingGift]);
 
   function apply(next: AppData) {
     setData(next);
@@ -57,6 +67,16 @@ export default function App() {
   function saveGiftedRecord(input: GiftedRecordInput) {
     apply(recordGiftedCapture(data, input));
     setRecordingGift(null);
+  }
+
+  function openRecordDialog(creature: Creature) {
+    setRecording(creature);
+    setRecordingGift(null);
+  }
+
+  function openGiftedRecordDialog(creature: Creature) {
+    setRecording(null);
+    setRecordingGift(creature);
   }
 
   function updateSyncConfig(config: SyncConfig) {
@@ -154,15 +174,15 @@ export default function App() {
       <CurrentRoundPanel data={data} onSetTargets={(ids) => apply(setCurrentRoundTargets(data, ids))} onStartNew={(ids) => apply(startNewRound(data, ids))} onReset={() => apply(resetCurrentRoundCounts(data))} />
       <HeaderStats stats={calculateStats(data)} />
       {editing && <CreatureEditor key={editing === "new" ? "new" : editing.id} creature={editing === "new" ? null : editing} onSave={saveCreature} onCancel={() => setEditing(null)} />}
-      {recording && <RecordDialog creature={recording} onSave={saveRecord} onCancel={() => setRecording(null)} />}
-      {recordingGift && <GiftedRecordDialog creatures={data.creatures} initialCreatureId={recordingGift.id} onSave={saveGiftedRecord} onCancel={() => setRecordingGift(null)} />}
+      {recording && <div ref={recordDialogRef}><RecordDialog creature={recording} onSave={saveRecord} onCancel={() => setRecording(null)} /></div>}
+      {recordingGift && <div ref={giftedRecordDialogRef}><GiftedRecordDialog creatures={data.creatures} initialCreatureId={recordingGift.id} onSave={saveGiftedRecord} onCancel={() => setRecordingGift(null)} /></div>}
       <CreatureGrid
         creatures={data.creatures}
         onIncrement={(id) => apply(incrementEncounter(data, id))}
         onDecrement={(id) => apply(decrementEncounter(data, id))}
         onEdit={setEditing}
-        onRecord={setRecording}
-        onRecordGift={setRecordingGift}
+        onRecord={openRecordDialog}
+        onRecordGift={openGiftedRecordDialog}
         onRemove={removeCustomCreature}
       />
       <DataManager message={message} onExport={exportData} onImport={importData} onClear={clearData} onReset={resetData} />

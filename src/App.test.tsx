@@ -8,6 +8,7 @@ describe("App", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("renders the counter dashboard", () => {
@@ -135,6 +136,8 @@ describe("App", () => {
   it("records acquisition with current round total and second-level time", async () => {
     const user = userEvent.setup();
     render(<App />);
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLDivElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
     await user.click(screen.getByRole("button", { name: "展开当前轮次" }));
 
     await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
@@ -143,6 +146,7 @@ describe("App", () => {
     expect(within(roundPanel).getByText("本轮合计 2")).toBeInTheDocument();
 
     await user.click(screen.getAllByRole("button", { name: "记录获得" })[0]);
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
 
     expect(screen.getByLabelText("时间")).toHaveAttribute("step", "1");
     expect(screen.queryByLabelText("地点/活动")).not.toBeInTheDocument();
@@ -162,9 +166,12 @@ describe("App", () => {
   it("records gifted captures without affecting own capture stats", async () => {
     const user = userEvent.setup();
     render(<App />);
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLDivElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
 
     await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
     await user.click(screen.getAllByRole("button", { name: "记录赠送" })[0]);
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
     await user.clear(screen.getByLabelText("时间"));
     await user.type(screen.getByLabelText("时间"), "2026-05-22T08:09:10");
     await user.type(screen.getByLabelText("来源/赠送人"), "朋友");
