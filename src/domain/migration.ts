@@ -192,11 +192,11 @@ function migrateRecords(records: RawRecord[]): AcquisitionRecord[] {
     .reverse()
     .map((record) => {
       const acquisitionNumber = record.acquisitionNumber ?? (countsByCreature.get(record.creatureId) ?? 0) + 1;
-      const roundBreakdown = record.roundBreakdown ?? [{
+      const roundBreakdown = (record.roundBreakdown ?? [{
         creatureId: record.creatureId,
         creatureName: record.creatureName,
         encounters: record.roundEncounters,
-      }];
+      }]).filter((item) => item.encounters > 0);
       countsByCreature.set(record.creatureId, acquisitionNumber);
       return {
         ...record,

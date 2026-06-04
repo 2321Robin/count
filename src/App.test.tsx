@@ -2,6 +2,8 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { HistoryList } from "./components/HistoryList";
+import type { AcquisitionRecord } from "./domain/types";
 
 describe("App", () => {
   beforeEach(() => localStorage.clear());
@@ -72,7 +74,7 @@ describe("App", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("https://api.github.com/gists", expect.objectContaining({ method: "POST" }));
     expect(localStorage.getItem("s2-capture-counter:gist-id")).toBe("gist-created");
-    expect(screen.getByText("上传成功。已保存 Gist ID。")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("上传成功。已保存 Gist ID。");
   });
 
   it("separates creature names from the counter controls", () => {
@@ -164,6 +166,39 @@ describe("App", () => {
     expect(screen.getByText(/明细/)).toHaveTextContent("猴麦仔 1 / 烟花团 1");
     expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
     expect(screen.getByRole("listitem", { name: /烟花团/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
+  });
+
+  it("hides zero-count entries in acquisition breakdowns", () => {
+    const record: AcquisitionRecord = {
+      id: "record-1",
+      creatureId: "limited-shiny-houmaizai",
+      creatureName: "猴麦仔",
+      date: "2026-05-22T08:09:10",
+      acquisitionNumber: 1,
+      roundEncounters: 4,
+      roundBreakdown: [
+        { creatureId: "limited-shiny-houmaizai", creatureName: "猴麦仔", encounters: 3 },
+        { creatureId: "limited-shiny-yanhuatuan", creatureName: "烟花团", encounters: 1 },
+        { creatureId: "limited-shiny-jiayouhaikui", creatureName: "加油海葵", encounters: 0 },
+        { creatureId: "other", creatureName: "其它", encounters: 0 },
+      ],
+      isOffTarget: false,
+      targetCreatureId: "limited-shiny-houmaizai",
+      targetCreatureName: "猴麦仔",
+      targetRoundEncounters: 4,
+      totalEncountersAtRecord: 4,
+      location: "",
+      notes: "",
+    };
+
+    render(<HistoryList records={[record]} />);
+
+    const history = screen.getByRole("heading", { name: "获得历史" }).closest("section");
+    expect(screen.getByText(/明细/)).toHaveTextContent("猴麦仔 3 / 烟花团 1");
+    expect(history).not.toBeNull();
+    if (!history) throw new Error("history section missing");
+    expect(history).not.toHaveTextContent("加油海葵 0");
+    expect(history).not.toHaveTextContent("其它 0");
   });
 
   it("marks a target and records off-target acquisitions without changing the round", async () => {

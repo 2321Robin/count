@@ -67,7 +67,7 @@ export function DataManager({ message, syncConfig, syncBusy, onSaveSyncConfig, o
           <p className="muted">不配置也能照常离线使用。上传会覆盖 Gist，拉取会覆盖本机；覆盖前建议先导出 JSON 备份。</p>
         </div>
       )}
-      {message && <p className="message">{message}</p>}
+      {message && <p className="message" role="status">{message}</p>}
     </section>
   );
 }

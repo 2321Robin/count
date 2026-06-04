@@ -27,8 +27,8 @@ export function RecordDialog({ creature, targetCreature, onSave, onCancel }: Pro
       {targetCreature && <p className="muted">正在抓：{targetCreature.name}</p>}
       <label>获得类型
         <select value={isOffTarget ? "offTarget" : "normal"} onChange={(event) => setIsOffTarget(event.target.value === "offTarget")}>
-          <option value="offTarget">歪出的</option>
-          <option value="normal">并非歪出的</option>
+          <option value="offTarget">歪的</option>
+          <option value="normal">中了！</option>
         </select>
       </label>
       <label>时间<input type="datetime-local" step="1" value={date} onChange={(event) => setDate(event.target.value)} /></label>
