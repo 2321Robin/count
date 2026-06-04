@@ -167,6 +167,7 @@ select { border: 1px solid var(--border); border-radius: 12px; background: var(-
 .actions, .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sectionHeader { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
 .sectionHeader p, .syncPanel p, .muted { margin: 0.35rem 0 0; color: var(--muted); }
+.syncPanel .sectionHeader { margin-bottom: 12px; }
 .roundTotal { color: var(--accent); font-size: 1.25rem; white-space: nowrap; }
 .roundPanelActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
