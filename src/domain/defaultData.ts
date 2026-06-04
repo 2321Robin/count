@@ -24,7 +24,7 @@ const defaultCreatures: Array<Pick<Creature, "id" | "name" | "targetCount" | "lo
 
 export function createDefaultData(): AppData {
   return {
-    version: 2,
+    version: 3,
     creatures: defaultCreatures.map((creature) => ({
       ...creature,
       currentEncounters: 0,
@@ -39,5 +39,5 @@ export function createDefaultData(): AppData {
 }
 
 export function createCurrentRound(creatureIds: string[]): AppData["currentRound"] {
-  return creatureIds.length === 0 ? null : { creatureIds, updatedAt: formatDateTimeInput() };
+  return creatureIds.length === 0 ? null : { creatureIds, targetCreatureId: null, updatedAt: formatDateTimeInput() };
 }

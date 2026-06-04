@@ -14,8 +14,12 @@ export function HistoryList({ records }: Props) {
               <strong>{record.creatureName}</strong>
               <span>第 {record.acquisitionNumber} 只</span>
               <span>{formatRecordDate(record.date)}</span>
-              <span>本轮 {record.roundEncounters}</span>
-              {record.roundBreakdown.length > 1 && <span>明细 {record.roundBreakdown.map((item) => `${item.creatureName} ${item.encounters}`).join(" / ")}</span>}
+              {record.isOffTarget ? (
+                <span>记录抓“{record.targetCreatureName}”{record.targetRoundEncounters}只时歪出</span>
+              ) : (
+                <span>本轮 {record.roundEncounters}</span>
+              )}
+              {!record.isOffTarget && record.roundBreakdown.length > 1 && <span>明细 {record.roundBreakdown.map((item) => `${item.creatureName} ${item.encounters}`).join(" / ")}</span>}
               <span>历史 {record.totalEncountersAtRecord}</span>
               {record.notes && <em>{record.notes}</em>}
             </li>

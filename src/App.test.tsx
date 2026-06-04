@@ -15,7 +15,7 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "多端同步（可选）" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "数据管理与多端同步" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "展开当前轮次" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "展开多端同步" })).toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: /猴麦仔/ })).toBeInTheDocument();
@@ -163,6 +163,24 @@ describe("App", () => {
     expect(screen.getByText("本轮 2")).toBeInTheDocument();
     expect(screen.getByText(/明细/)).toHaveTextContent("猴麦仔 1 / 烟花团 1");
     expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
+    expect(screen.getByRole("listitem", { name: /烟花团/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
+  });
+
+  it("marks a target and records off-target acquisitions without changing the round", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "展开当前轮次" }));
+    await user.selectOptions(screen.getByLabelText("正在抓"), "limited-shiny-houmaizai");
+    await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
+
+    await user.click(screen.getAllByRole("button", { name: "记录获得" })[1]);
+    expect(screen.getByLabelText("获得类型")).toHaveValue("offTarget");
+    await user.click(screen.getByRole("button", { name: "保存记录" }));
+
+    expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent("记录抓“猴麦仔”2只时歪出");
+    expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 2");
     expect(screen.getByRole("listitem", { name: /烟花团/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
   });
 

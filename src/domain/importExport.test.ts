@@ -19,7 +19,7 @@ describe("import export", () => {
   it("exports formatted JSON", () => {
     const json = exportAppData(createDefaultData());
 
-    expect(JSON.parse(json).version).toBe(2);
+    expect(JSON.parse(json).version).toBe(3);
     expect(json).toContain("\n");
   });
 
@@ -38,7 +38,7 @@ describe("import export", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.data.version).toBe(2);
+      expect(result.data.version).toBe(3);
       expect(result.data.giftedRecords).toEqual([]);
       expect(result.data.currentRound).toBeNull();
     }
@@ -110,7 +110,7 @@ describe("import export", () => {
   });
 
   it("rejects data with missing required fields", () => {
-    const result = parseImportedData(JSON.stringify({ version: 2, creatures: [] }));
+    const result = parseImportedData(JSON.stringify({ version: 3, creatures: [] }));
 
     expect(result).toEqual({ ok: false, error: "导入数据结构不完整。" });
   });

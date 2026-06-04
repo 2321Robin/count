@@ -21,7 +21,7 @@ describe("storage", () => {
   it("loads defaults when storage is empty", () => {
     const data = loadAppData();
 
-    expect(data.version).toBe(2);
+    expect(data.version).toBe(3);
     expect(data.creatures.length).toBeGreaterThan(0);
     expect(data.giftedRecords).toEqual([]);
   });
@@ -55,7 +55,7 @@ describe("storage", () => {
 
     const loaded = loadAppData();
 
-    expect(loaded.version).toBe(2);
+    expect(loaded.version).toBe(3);
     expect(loaded.creatures[0]).toMatchObject({
       targetCount: 80,
       currentEncounters: 12,
@@ -138,6 +138,6 @@ describe("storage", () => {
   it("falls back to defaults for malformed storage", () => {
     localStorage.setItem(STORAGE_KEY, "not json");
 
-    expect(loadAppData().version).toBe(2);
+    expect(loadAppData().version).toBe(3);
   });
 });

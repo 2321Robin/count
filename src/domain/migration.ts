@@ -9,9 +9,17 @@ import type {
   RoundEncounterSnapshot,
 } from "./types";
 
-type RawRecord = Omit<AcquisitionRecord, "acquisitionNumber" | "roundBreakdown"> & {
+type RawRecord = Omit<AcquisitionRecord, "acquisitionNumber" | "roundBreakdown" | "isOffTarget" | "targetCreatureId" | "targetCreatureName" | "targetRoundEncounters"> & {
   acquisitionNumber?: number;
   roundBreakdown?: RoundEncounterSnapshot[];
+  isOffTarget?: boolean;
+  targetCreatureId?: string;
+  targetCreatureName?: string;
+  targetRoundEncounters?: number;
+};
+
+type RawCurrentRound = Omit<CurrentRound, "targetCreatureId"> & {
+  targetCreatureId?: string | null;
 };
 
 type RawV1AppData = {
@@ -21,12 +29,14 @@ type RawV1AppData = {
   settings: AppData["settings"];
 };
 
-type RawV2AppData = Omit<AppData, "records" | "giftedRecords"> & {
+type RawVersionedAppData = Omit<AppData, "version" | "records" | "giftedRecords" | "currentRound"> & {
+  version: 2 | 3;
   records: RawRecord[];
   giftedRecords: GiftedCaptureRecord[];
+  currentRound: RawCurrentRound | null;
 };
 
-type RawAppData = RawV1AppData | RawV2AppData;
+type RawAppData = RawV1AppData | RawVersionedAppData;
 
 function isNonNegativeSafeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -80,6 +90,10 @@ function isAcquisitionRecord(value: unknown): value is RawRecord {
     (record.acquisitionNumber === undefined || isNonNegativeSafeInteger(record.acquisitionNumber)) &&
     isNonNegativeSafeInteger(record.roundEncounters) &&
     (record.roundBreakdown === undefined || isRoundBreakdown(record.roundBreakdown)) &&
+    (record.isOffTarget === undefined || typeof record.isOffTarget === "boolean") &&
+    (record.targetCreatureId === undefined || typeof record.targetCreatureId === "string") &&
+    (record.targetCreatureName === undefined || typeof record.targetCreatureName === "string") &&
+    (record.targetRoundEncounters === undefined || isNonNegativeSafeInteger(record.targetRoundEncounters)) &&
     isNonNegativeSafeInteger(record.totalEncountersAtRecord) &&
     typeof record.location === "string" &&
     typeof record.notes === "string"
@@ -100,11 +114,11 @@ function isGiftedCaptureRecord(value: unknown): value is GiftedCaptureRecord {
   );
 }
 
-function isCurrentRound(value: unknown): value is CurrentRound | null {
+function isCurrentRound(value: unknown): value is RawCurrentRound | null {
   if (value === null) return true;
   if (!value || typeof value !== "object") return false;
   const round = value as Record<string, unknown>;
-  return Array.isArray(round.creatureIds) && round.creatureIds.every((id) => typeof id === "string") && isRecordDate(round.updatedAt);
+  return Array.isArray(round.creatureIds) && round.creatureIds.every((id) => typeof id === "string") && (round.targetCreatureId === undefined || round.targetCreatureId === null || typeof round.targetCreatureId === "string") && isRecordDate(round.updatedAt);
 }
 
 function hasUniqueIds(items: Array<{ id: string }>): boolean {
@@ -120,7 +134,7 @@ function isRawAppData(value: unknown): value is RawAppData {
   const data = value as Record<string, unknown>;
   const settings = data.settings as Record<string, unknown> | undefined;
   if (!(
-    (data.version === 1 || data.version === 2) &&
+    (data.version === 1 || data.version === 2 || data.version === 3) &&
     Array.isArray(data.creatures) &&
     data.creatures.every(isCreature) &&
     Array.isArray(data.records) &&
@@ -132,7 +146,7 @@ function isRawAppData(value: unknown): value is RawAppData {
     return false;
   }
 
-  if (data.version === 2 && !(
+  if (data.version !== 1 && !(
     Array.isArray(data.giftedRecords) &&
     data.giftedRecords.every(isGiftedCaptureRecord) &&
     isCurrentRound(data.currentRound)
@@ -144,7 +158,7 @@ function isRawAppData(value: unknown): value is RawAppData {
   const records = data.records;
   const creatureIds = new Set(creatures.map((creature) => creature.id));
   const round = data.currentRound as CurrentRound | null | undefined;
-  const giftedRecords = data.version === 2 ? data.giftedRecords as GiftedCaptureRecord[] : [];
+  const giftedRecords = data.version !== 1 ? data.giftedRecords as GiftedCaptureRecord[] : [];
 
   return (
     hasUniqueIds(creatures) &&
@@ -152,8 +166,9 @@ function isRawAppData(value: unknown): value is RawAppData {
     hasUniqueIds(giftedRecords) &&
     records.every((record) => creatureIds.has(record.creatureId)) &&
     records.every((record) => record.roundBreakdown === undefined || record.roundBreakdown.every((item) => creatureIds.has(item.creatureId))) &&
+    records.every((record) => record.targetCreatureId === undefined || creatureIds.has(record.targetCreatureId)) &&
     giftedRecords.every((record) => creatureIds.has(record.creatureId)) &&
-    (round === undefined || round === null || (hasUniqueStrings(round.creatureIds) && round.creatureIds.every((id) => creatureIds.has(id))))
+    (round === undefined || round === null || (hasUniqueStrings(round.creatureIds) && round.creatureIds.every((id) => creatureIds.has(id)) && (round.targetCreatureId === undefined || round.targetCreatureId === null || creatureIds.has(round.targetCreatureId))))
   );
 }
 
@@ -177,16 +192,21 @@ function migrateRecords(records: RawRecord[]): AcquisitionRecord[] {
     .reverse()
     .map((record) => {
       const acquisitionNumber = record.acquisitionNumber ?? (countsByCreature.get(record.creatureId) ?? 0) + 1;
+      const roundBreakdown = record.roundBreakdown ?? [{
+        creatureId: record.creatureId,
+        creatureName: record.creatureName,
+        encounters: record.roundEncounters,
+      }];
       countsByCreature.set(record.creatureId, acquisitionNumber);
       return {
         ...record,
         date: normalizeRecordDate(record.date),
         acquisitionNumber,
-        roundBreakdown: record.roundBreakdown ?? [{
-          creatureId: record.creatureId,
-          creatureName: record.creatureName,
-          encounters: record.roundEncounters,
-        }],
+        roundBreakdown,
+        isOffTarget: record.isOffTarget ?? false,
+        targetCreatureId: record.targetCreatureId ?? record.creatureId,
+        targetCreatureName: record.targetCreatureName ?? record.creatureName,
+        targetRoundEncounters: record.targetRoundEncounters ?? record.roundEncounters,
       };
     })
     .reverse();
@@ -197,13 +217,16 @@ function migrateGiftedRecords(records: GiftedCaptureRecord[]): GiftedCaptureReco
 }
 
 function migrateCurrentRound(data: RawAppData, creatures: Creature[]): CurrentRound | null {
-  if (data.version === 2) {
-    const ids = data.currentRound?.creatureIds ?? [];
-    return ids.length === 0 ? null : { creatureIds: ids, updatedAt: normalizeRecordDate(data.currentRound!.updatedAt) };
+  if (data.version !== 1) {
+    const ids = (data.currentRound?.creatureIds ?? []).filter((id) => creatures.some((creature) => creature.id === id && creature.currentEncounters > 0));
+    const targetCreatureId = data.currentRound?.targetCreatureId ?? null;
+    const targetId = targetCreatureId && creatures.some((creature) => creature.id === targetCreatureId) ? targetCreatureId : null;
+    if (ids.length === 0 && !targetId) return null;
+    return { creatureIds: ids, targetCreatureId: targetId, updatedAt: normalizeRecordDate(data.currentRound!.updatedAt) };
   }
 
   const creatureIds = creatures.filter((creature) => creature.currentEncounters > 0).map((creature) => creature.id);
-  return creatureIds.length === 0 ? null : { creatureIds, updatedAt: formatDateTimeInput() };
+  return creatureIds.length === 0 ? null : { creatureIds, targetCreatureId: null, updatedAt: formatDateTimeInput() };
 }
 
 export function migrateAppData(value: unknown): AppData | null {
@@ -212,10 +235,10 @@ export function migrateAppData(value: unknown): AppData | null {
   const defaultById = new Map(createDefaultData().creatures.map((creature) => [creature.id, creature]));
   const creatures = value.creatures.map((creature) => migrateCreature(creature, defaultById));
   const migrated: AppData = {
-    version: 2,
+    version: 3,
     creatures,
     records: migrateRecords(value.records),
-    giftedRecords: value.version === 2 ? migrateGiftedRecords(value.giftedRecords) : [],
+    giftedRecords: value.version !== 1 ? migrateGiftedRecords(value.giftedRecords) : [],
     currentRound: migrateCurrentRound(value, creatures),
     settings: value.settings,
   };

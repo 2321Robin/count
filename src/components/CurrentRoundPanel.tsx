@@ -10,12 +10,15 @@ function selectedIdsFromForm(form: HTMLFormElement): string[] {
 type Props = {
   data: AppData;
   onSetTargets: (ids: string[]) => void;
+  onSetTarget: (id: string | null) => void;
   onStartNew: (ids: string[]) => void;
   onReset: () => void;
 };
 
-export function CurrentRoundPanel({ data, onSetTargets, onStartNew, onReset }: Props) {
+export function CurrentRoundPanel({ data, onSetTargets, onSetTarget, onStartNew, onReset }: Props) {
   const activeIds = new Set(data.currentRound?.creatureIds ?? []);
+  const targetCreatureId = data.currentRound?.targetCreatureId ?? "";
+  const targetCreature = targetCreatureId ? data.creatures.find((creature) => creature.id === targetCreatureId) : null;
   const activeCreatures = data.creatures.filter((creature) => activeIds.has(creature.id));
   const total = activeCreatures.reduce((sum, creature) => sum + creature.currentEncounters, 0);
   const [isOpen, setIsOpen] = useState(false);
@@ -31,10 +34,11 @@ export function CurrentRoundPanel({ data, onSetTargets, onStartNew, onReset }: P
       <div className="sectionHeader">
         <div>
           <h2>当前轮次</h2>
-          {isOpen && <p>选择本轮一起统计的精灵；记录获得时会清空这些精灵的本轮计数。</p>}
+          {isOpen && <p>选择本轮一起统计的精灵，并标记正在抓的目标；计数为 0 的精灵会自动移出本轮。</p>}
         </div>
         <div className="roundPanelActions">
           <strong className="roundTotal">本轮合计 {total}</strong>
+          {targetCreature && <strong className="roundTarget">正在抓 {targetCreature.name}</strong>}
           <button type="button" className="ghost" aria-expanded={isOpen} aria-controls="current-round-details" onClick={() => setIsOpen((value) => !value)}>
             {isOpen ? "收起当前轮次" : "展开当前轮次"}
           </button>
@@ -50,7 +54,13 @@ export function CurrentRoundPanel({ data, onSetTargets, onStartNew, onReset }: P
         <div id="current-round-details" className="roundDetails">
           {activeCreatures.length === 0 && <p>还没有选择本轮精灵。点任意精灵 +1 会自动加入当前轮次。</p>}
           {data.currentRound?.updatedAt && <p className="muted">最近调整：{formatRecordDate(data.currentRound.updatedAt)}</p>}
-          <form key={data.currentRound?.creatureIds.join("|") ?? ""} onSubmit={(event) => { event.preventDefault(); changeTargets(event.currentTarget, false); }}>
+          <label>正在抓
+            <select value={targetCreatureId} onChange={(event) => onSetTarget(event.target.value || null)}>
+              <option value="">未标记</option>
+              {data.creatures.map((creature) => <option key={creature.id} value={creature.id}>{creature.name}</option>)}
+            </select>
+          </label>
+          <form key={`${data.currentRound?.creatureIds.join("|") ?? ""}:${targetCreatureId}`} onSubmit={(event) => { event.preventDefault(); changeTargets(event.currentTarget, false); }}>
             <div className="roundChoices">
               {data.creatures.map((creature: Creature) => (
                 <label key={creature.id} className="roundChoice">

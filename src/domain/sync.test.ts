@@ -46,7 +46,7 @@ describe("sync", () => {
     const result = await pullFromGist({ token: "token", gistId: "gist" });
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data?.version).toBe(2);
+    if (result.ok) expect(result.data?.version).toBe(3);
     expect(fetchMock).toHaveBeenCalledWith("https://api.github.com/gists/gist", expect.any(Object));
   });
 

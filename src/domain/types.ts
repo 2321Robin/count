@@ -1,5 +1,5 @@
 export type AppData = {
-  version: 2;
+  version: 3;
   creatures: Creature[];
   records: AcquisitionRecord[];
   giftedRecords: GiftedCaptureRecord[];
@@ -20,6 +20,7 @@ export type Creature = {
 
 export type CurrentRound = {
   creatureIds: string[];
+  targetCreatureId: string | null;
   updatedAt: string;
 };
 
@@ -37,6 +38,10 @@ export type AcquisitionRecord = {
   acquisitionNumber: number;
   roundEncounters: number;
   roundBreakdown: RoundEncounterSnapshot[];
+  isOffTarget: boolean;
+  targetCreatureId: string;
+  targetCreatureName: string;
+  targetRoundEncounters: number;
   totalEncountersAtRecord: number;
   location: string;
   notes: string;
@@ -66,6 +71,7 @@ export type RecordInput = {
   date: string;
   location: string;
   notes: string;
+  isOffTarget?: boolean;
 };
 
 export type GiftedRecordInput = {

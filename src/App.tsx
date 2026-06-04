@@ -7,9 +7,8 @@ import { HeaderStats } from "./components/HeaderStats";
 import { GiftedHistoryList } from "./components/GiftedHistoryList";
 import { GiftedRecordDialog } from "./components/GiftedRecordDialog";
 import { HistoryList } from "./components/HistoryList";
-import { SyncPanel } from "./components/SyncPanel";
 import { RecordDialog } from "./components/RecordDialog";
-import { addCreature, calculateStats, decrementEncounter, incrementEncounter, recordAcquisition, recordGiftedCapture, removeCreature, resetCurrentRoundCounts, setCurrentRoundTargets, startNewRound, updateCreature } from "./domain/counter";
+import { addCreature, calculateStats, decrementEncounter, getCurrentRoundTarget, incrementEncounter, recordAcquisition, recordGiftedCapture, removeCreature, resetCurrentRoundCounts, setCurrentRoundTarget, setCurrentRoundTargets, startNewRound, updateCreature } from "./domain/counter";
 import { createDefaultData } from "./domain/defaultData";
 import { exportAppData, parseImportedData } from "./domain/importExport";
 import { loadAppData, saveAppData } from "./domain/storage";
@@ -144,7 +143,7 @@ export default function App() {
   }
 
   function clearData() {
-    if (window.confirm("确定清空所有数据？此操作不可撤销。")) apply({ version: 2, creatures: [], records: [], giftedRecords: [], currentRound: null, settings: { sortMode: "default" } });
+    if (window.confirm("确定清空所有数据？此操作不可撤销。")) apply({ version: 3, creatures: [], records: [], giftedRecords: [], currentRound: null, settings: { sortMode: "default" } });
   }
 
   function resetData() {
@@ -177,11 +176,10 @@ export default function App() {
           <button type="button" onClick={() => setEditing("new")}>新增精灵</button>
         </div>
       </header>
-      <SyncPanel config={syncConfig} busy={syncBusy} onSaveConfig={updateSyncConfig} onPush={pushSync} onPull={pullSync} onDisconnect={disconnectSync} />
-      <CurrentRoundPanel data={data} onSetTargets={(ids) => apply(setCurrentRoundTargets(data, ids))} onStartNew={(ids) => apply(startNewRound(data, ids))} onReset={() => apply(resetCurrentRoundCounts(data))} />
+      <CurrentRoundPanel data={data} onSetTargets={(ids) => apply(setCurrentRoundTargets(data, ids))} onSetTarget={(id) => apply(setCurrentRoundTarget(data, id))} onStartNew={(ids) => apply(startNewRound(data, ids))} onReset={() => apply(resetCurrentRoundCounts(data))} />
       <HeaderStats stats={calculateStats(data)} />
       {editing && <CreatureEditor key={editing === "new" ? "new" : editing.id} creature={editing === "new" ? null : editing} onSave={saveCreature} onCancel={() => setEditing(null)} />}
-      {recording && <div ref={recordDialogRef}><RecordDialog creature={recording} onSave={saveRecord} onCancel={() => setRecording(null)} /></div>}
+      {recording && <div ref={recordDialogRef}><RecordDialog creature={recording} targetCreature={getCurrentRoundTarget(data)} onSave={saveRecord} onCancel={() => setRecording(null)} /></div>}
       {recordingGift && <div ref={giftedRecordDialogRef}><GiftedRecordDialog creatures={data.creatures} initialCreatureId={recordingGift.id} onSave={saveGiftedRecord} onCancel={() => setRecordingGift(null)} /></div>}
       <CreatureGrid
         creatures={data.creatures}
@@ -192,7 +190,7 @@ export default function App() {
         onRecordGift={openGiftedRecordDialog}
         onRemove={removeCustomCreature}
       />
-      <DataManager message={message} onExport={exportData} onImport={importData} onClear={clearData} onReset={resetData} />
+      <DataManager message={message} syncConfig={syncConfig} syncBusy={syncBusy} onSaveSyncConfig={updateSyncConfig} onPushSync={pushSync} onPullSync={pullSync} onDisconnectSync={disconnectSync} onExport={exportData} onImport={importData} onClear={clearData} onReset={resetData} />
       <HistoryList records={data.records} />
       <GiftedHistoryList records={data.giftedRecords} />
     </main>
