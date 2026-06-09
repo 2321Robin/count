@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultData } from "./defaultData";
-import { clearSyncConfig, loadSyncConfig, pullFromGist, pushToGist, saveSyncConfig } from "./sync";
+import { clearSyncConfig, loadSyncConfig, pullFromGist, pushToGist, saveSyncConfig, selectHigherTotalData } from "./sync";
+import type { AppData } from "./types";
 
 describe("sync", () => {
   beforeEach(() => {
@@ -56,5 +57,53 @@ describe("sync", () => {
     const result = await pullFromGist({ token: "bad", gistId: "gist" });
 
     expect(result).toEqual({ ok: false, error: "拉取失败：GitHub Token 无效或没有 gist 权限。" });
+  });
+
+  it("selects cloud data when cloud total encounters are higher", () => {
+    const local = createDefaultData();
+    const cloud: AppData = {
+      ...createDefaultData(),
+      creatures: createDefaultData().creatures.map((creature, index) => index === 0 ? { ...creature, totalEncounters: 2 } : creature),
+    };
+
+    expect(selectHigherTotalData(local, cloud)).toEqual({
+      selected: cloud,
+      source: "cloud",
+      localTotal: 0,
+      cloudTotal: 2,
+    });
+  });
+
+  it("keeps local data when local total encounters are higher", () => {
+    const local: AppData = {
+      ...createDefaultData(),
+      creatures: createDefaultData().creatures.map((creature, index) => index === 0 ? { ...creature, totalEncounters: 3 } : creature),
+    };
+    const cloud = createDefaultData();
+
+    expect(selectHigherTotalData(local, cloud)).toEqual({
+      selected: local,
+      source: "local",
+      localTotal: 3,
+      cloudTotal: 0,
+    });
+  });
+
+  it("keeps local data when total encounters are equal", () => {
+    const local: AppData = {
+      ...createDefaultData(),
+      creatures: createDefaultData().creatures.map((creature, index) => index === 0 ? { ...creature, totalEncounters: 1 } : creature),
+    };
+    const cloud: AppData = {
+      ...createDefaultData(),
+      creatures: createDefaultData().creatures.map((creature, index) => index === 1 ? { ...creature, totalEncounters: 1 } : creature),
+    };
+
+    expect(selectHigherTotalData(local, cloud)).toEqual({
+      selected: local,
+      source: "equal",
+      localTotal: 1,
+      cloudTotal: 1,
+    });
   });
 });

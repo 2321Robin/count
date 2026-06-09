@@ -12,11 +12,12 @@ import { addCreature, calculateStats, decrementEncounter, getCurrentRoundTarget,
 import { createDefaultData } from "./domain/defaultData";
 import { exportAppData, parseImportedData } from "./domain/importExport";
 import { loadAppData, saveAppData } from "./domain/storage";
-import { clearSyncConfig, loadSyncConfig, pullFromGist, pushToGist, saveSyncConfig } from "./domain/sync";
+import { clearSyncConfig, loadSyncConfig, pullFromGist, pushToGist, saveSyncConfig, selectHigherTotalData } from "./domain/sync";
 import type { SyncConfig } from "./domain/sync";
 import type { AppData, Creature, CreatureInput, GiftedRecordInput, RecordInput } from "./domain/types";
 
 const THEME_KEY = "s2-capture-counter:theme";
+const AUTO_SYNC_UPLOAD_DELAY_MS = 800;
 type Theme = "fantasy" | "navy" | "neon" | "forest" | "sunset" | "mono";
 
 function isTheme(value: string | null): value is Theme {
@@ -39,9 +40,27 @@ export default function App() {
   const [syncBusy, setSyncBusy] = useState(false);
   const recordDialogRef = useRef<HTMLDivElement>(null);
   const giftedRecordDialogRef = useRef<HTMLDivElement>(null);
+  const dataRef = useRef(data);
+  const hasHydratedRef = useRef(false);
+  const hasTrackedInitialDataRef = useRef(false);
+  const preHydrationDirtyRef = useRef(false);
+  const skipNextAutoUploadRef = useRef(false);
+  const [hydrationRevision, setHydrationRevision] = useState(0);
 
   useEffect(() => saveAppData(data), [data]);
   useEffect(() => localStorage.setItem(THEME_KEY, theme), [theme]);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    if (!hasTrackedInitialDataRef.current) {
+      hasTrackedInitialDataRef.current = true;
+      return;
+    }
+    if (!hasHydratedRef.current) preHydrationDirtyRef.current = true;
+  }, [data]);
 
   useEffect(() => {
     if (recording) recordDialogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -50,6 +69,65 @@ export default function App() {
   useEffect(() => {
     if (recordingGift) giftedRecordDialogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [recordingGift]);
+
+  useEffect(() => {
+    const config = syncConfig;
+    if (!config.token.trim() || !config.gistId.trim()) {
+      hasHydratedRef.current = true;
+      return;
+    }
+
+    let cancelled = false;
+    setSyncBusy(true);
+    pullFromGist(config).then((result) => {
+      if (cancelled) return;
+      if (result.ok) applyPulledData(result.data);
+      else setMessage(result.error);
+    }).finally(() => {
+      if (!cancelled) {
+        setSyncBusy(false);
+        hasHydratedRef.current = true;
+        if (preHydrationDirtyRef.current) setHydrationRevision((revision) => revision + 1);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedRef.current) return;
+    if (skipNextAutoUploadRef.current) {
+      skipNextAutoUploadRef.current = false;
+      return;
+    }
+
+    const config = syncConfig;
+    if (!config.token.trim() || !config.gistId.trim()) return;
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      pushToGist(dataRef.current, config).then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          setMessage(result.error);
+          return;
+        }
+        const nextConfig = { token: config.token.trim(), gistId: result.gistId ?? config.gistId.trim() };
+        if (nextConfig.token !== config.token.trim() || nextConfig.gistId !== config.gistId.trim()) {
+          saveSyncConfig(nextConfig);
+          setSyncConfig(nextConfig);
+        }
+        setMessage("本机数据已自动上传到云端。");
+      });
+    }, AUTO_SYNC_UPLOAD_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [data, syncConfig, hydrationRevision]);
 
   function apply(next: AppData) {
     setData(next);
@@ -84,8 +162,23 @@ export default function App() {
 
   function updateSyncConfig(config: SyncConfig) {
     saveSyncConfig(config);
+    skipNextAutoUploadRef.current = true;
     setSyncConfig(config);
+    hasHydratedRef.current = true;
     setMessage("同步配置已保存。本机离线数据仍会继续保存。");
+  }
+
+  function applyPulledData(cloudData: AppData) {
+    const selection = selectHigherTotalData(dataRef.current, cloudData);
+    if (selection.source === "cloud") {
+      preHydrationDirtyRef.current = false;
+      skipNextAutoUploadRef.current = true;
+      setData(selection.selected);
+      setMessage("云端数据总抓取数更高，已自动更新本机数据。");
+      return;
+    }
+
+    setMessage("本机数据总抓取数不低于云端，已保留本机数据。");
   }
 
   async function pushSync(config: SyncConfig) {
@@ -98,12 +191,12 @@ export default function App() {
     }
     const nextConfig = { token: config.token.trim(), gistId: result.gistId ?? config.gistId.trim() };
     saveSyncConfig(nextConfig);
+    skipNextAutoUploadRef.current = true;
     setSyncConfig(nextConfig);
     setMessage("上传成功。已保存 Gist ID。");
   }
 
   async function pullSync(config: SyncConfig) {
-    if (!window.confirm("拉取云端数据会覆盖本机当前数据。建议先导出 JSON 备份。确定继续？")) return;
     setSyncBusy(true);
     const result = await pullFromGist(config);
     setSyncBusy(false);
@@ -111,8 +204,7 @@ export default function App() {
       setMessage(result.error);
       return;
     }
-    setData(result.data);
-    setMessage("拉取成功，本机数据已更新。");
+    applyPulledData(result.data);
   }
 
   function disconnectSync() {

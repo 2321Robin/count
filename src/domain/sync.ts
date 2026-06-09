@@ -13,6 +13,28 @@ export type SyncConfig = {
 
 export type SyncResult = { ok: true; data: AppData; gistId?: string } | { ok: false; error: string };
 
+export type SyncDataSource = "local" | "cloud" | "equal";
+
+export type SyncDataSelection = {
+  selected: AppData;
+  source: SyncDataSource;
+  localTotal: number;
+  cloudTotal: number;
+};
+
+function totalEncounters(data: AppData): number {
+  return data.creatures.reduce((sum, creature) => sum + creature.totalEncounters, 0);
+}
+
+export function selectHigherTotalData(localData: AppData, cloudData: AppData): SyncDataSelection {
+  const localTotal = totalEncounters(localData);
+  const cloudTotal = totalEncounters(cloudData);
+
+  if (cloudTotal > localTotal) return { selected: cloudData, source: "cloud", localTotal, cloudTotal };
+  if (localTotal > cloudTotal) return { selected: localData, source: "local", localTotal, cloudTotal };
+  return { selected: localData, source: "equal", localTotal, cloudTotal };
+}
+
 export function loadSyncConfig(): SyncConfig {
   return {
     token: localStorage.getItem(TOKEN_STORAGE_KEY) ?? "",

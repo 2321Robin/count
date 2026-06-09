@@ -35,7 +35,7 @@ export function DataManager({ message, syncConfig, syncBusy, onSaveSyncConfig, o
       <div className="sectionHeader">
         <div>
           <h2>数据管理与多端同步</h2>
-          <p>导入导出、本地重置和 GitHub Gist 多端同步集中在这里。</p>
+          <p>配置 GitHub Gist 后，打开页面会自动检查云端数据，并在本机数据变化后自动上传。</p>
         </div>
         <button type="button" className="ghost" aria-expanded={isSyncOpen} aria-controls="sync-panel-details" onClick={() => setIsSyncOpen((value) => !value)}>
           {isSyncOpen ? "收起多端同步" : "展开多端同步"}
@@ -64,7 +64,7 @@ export function DataManager({ message, syncConfig, syncBusy, onSaveSyncConfig, o
               <button type="button" disabled={syncBusy} onClick={onDisconnectSync}>退出同步</button>
             </div>
           </form>
-          <p className="muted">不配置也能照常离线使用。上传会覆盖 Gist，拉取会覆盖本机；覆盖前建议先导出 JSON 备份。</p>
+          <p className="muted">拉取时会比较本机和云端总抓取数，并保留更高的版本；Token 仅保存在当前浏览器。</p>
         </div>
       )}
       {message && <p className="message" role="status">{message}</p>}
