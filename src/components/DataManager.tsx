@@ -4,6 +4,7 @@ import type { SyncConfig } from "../domain/sync";
 
 type Props = {
   message: string;
+  lastSyncAt: string | null;
   syncConfig: SyncConfig;
   syncBusy: boolean;
   onSaveSyncConfig: (config: SyncConfig) => void;
@@ -16,7 +17,7 @@ type Props = {
   onReset: () => void;
 };
 
-export function DataManager({ message, syncConfig, syncBusy, onSaveSyncConfig, onPushSync, onPullSync, onDisconnectSync, onExport, onImport, onClear, onReset }: Props) {
+export function DataManager({ message, lastSyncAt, syncConfig, syncBusy, onSaveSyncConfig, onPushSync, onPullSync, onDisconnectSync, onExport, onImport, onClear, onReset }: Props) {
   const [token, setToken] = useState(syncConfig.token);
   const [gistId, setGistId] = useState(syncConfig.gistId);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
@@ -65,6 +66,7 @@ export function DataManager({ message, syncConfig, syncBusy, onSaveSyncConfig, o
             </div>
           </form>
           <p className="muted">拉取时会比较本机和云端总抓取数，并保留更高的版本；Token 仅保存在当前浏览器。</p>
+          <p className="muted">上次同步：{lastSyncAt ? new Date(lastSyncAt).toLocaleString("zh-CN", { hour12: false }) : "暂无"}</p>
         </div>
       )}
       {message && <p className="message" role="status">{message}</p>}

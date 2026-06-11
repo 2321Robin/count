@@ -17,6 +17,7 @@ import type { SyncConfig } from "./domain/sync";
 import type { AppData, Creature, CreatureInput, GiftedRecordInput, RecordInput } from "./domain/types";
 
 const THEME_KEY = "s2-capture-counter:theme";
+const LAST_SYNC_AT_KEY = "s2-capture-counter:last-sync-at";
 const AUTO_SYNC_UPLOAD_DELAY_MS = 800;
 type Theme = "fantasy" | "navy" | "neon" | "forest" | "sunset" | "mono";
 
@@ -36,6 +37,7 @@ export default function App() {
   const [recording, setRecording] = useState<Creature | null>(null);
   const [recordingGift, setRecordingGift] = useState<Creature | null>(null);
   const [message, setMessage] = useState("");
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(() => localStorage.getItem(LAST_SYNC_AT_KEY));
   const [syncConfig, setSyncConfig] = useState<SyncConfig>(() => loadSyncConfig());
   const [syncBusy, setSyncBusy] = useState(false);
   const recordDialogRef = useRef<HTMLDivElement>(null);
@@ -120,6 +122,7 @@ export default function App() {
           setSyncConfig(nextConfig);
         }
         setMessage("本机数据已自动上传到云端。");
+        markSynced();
       });
     }, AUTO_SYNC_UPLOAD_DELAY_MS);
 
@@ -168,6 +171,12 @@ export default function App() {
     setMessage("同步配置已保存。本机离线数据仍会继续保存。");
   }
 
+  function markSynced() {
+    const timestamp = new Date().toISOString();
+    localStorage.setItem(LAST_SYNC_AT_KEY, timestamp);
+    setLastSyncAt(timestamp);
+  }
+
   function applyPulledData(cloudData: AppData) {
     const selection = selectHigherTotalData(dataRef.current, cloudData);
     if (selection.source === "cloud") {
@@ -175,10 +184,12 @@ export default function App() {
       skipNextAutoUploadRef.current = true;
       setData(selection.selected);
       setMessage("云端数据总抓取数更高，已自动更新本机数据。");
+      markSynced();
       return;
     }
 
     setMessage("本机数据总抓取数不低于云端，已保留本机数据。");
+    markSynced();
   }
 
   async function pushSync(config: SyncConfig) {
@@ -194,6 +205,7 @@ export default function App() {
     skipNextAutoUploadRef.current = true;
     setSyncConfig(nextConfig);
     setMessage("上传成功。已保存 Gist ID。");
+    markSynced();
   }
 
   async function pullSync(config: SyncConfig) {
@@ -282,7 +294,7 @@ export default function App() {
         onRecordGift={openGiftedRecordDialog}
         onRemove={removeCustomCreature}
       />
-      <DataManager message={message} syncConfig={syncConfig} syncBusy={syncBusy} onSaveSyncConfig={updateSyncConfig} onPushSync={pushSync} onPullSync={pullSync} onDisconnectSync={disconnectSync} onExport={exportData} onImport={importData} onClear={clearData} onReset={resetData} />
+      <DataManager message={message} lastSyncAt={lastSyncAt} syncConfig={syncConfig} syncBusy={syncBusy} onSaveSyncConfig={updateSyncConfig} onPushSync={pushSync} onPullSync={pullSync} onDisconnectSync={disconnectSync} onExport={exportData} onImport={importData} onClear={clearData} onReset={resetData} />
       <HistoryList records={data.records} />
       <GiftedHistoryList records={data.giftedRecords} />
     </main>

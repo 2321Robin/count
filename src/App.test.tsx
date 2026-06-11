@@ -80,6 +80,7 @@ describe("App", () => {
 
   it("pushes current data to a private gist and stores the new gist id", async () => {
     const user = userEvent.setup();
+    vi.setSystemTime(new Date(2026, 5, 11, 10, 32, 18));
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "gist-created" }), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
@@ -91,6 +92,7 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledWith("https://api.github.com/gists", expect.objectContaining({ method: "POST" }));
     expect(localStorage.getItem("s2-capture-counter:gist-id")).toBe("gist-created");
     expect(screen.getByRole("status")).toHaveTextContent("上传成功。已保存 Gist ID。");
+    expect(screen.getByText("上次同步：2026/6/11 10:32:18")).toBeInTheDocument();
   });
 
   it("does not automatically upload again after a manual push saves the gist id", async () => {
