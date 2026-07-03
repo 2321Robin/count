@@ -430,6 +430,19 @@ describe("App", () => {
     expect(screen.getByRole("listitem", { name: /烟花团/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
   });
 
+  it("keeps current round when manually choosing off-target for the same creature", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "记录获得" })[0]);
+    await user.selectOptions(screen.getByLabelText("获得类型"), "offTarget");
+    await user.click(screen.getByRole("button", { name: "保存记录" }));
+
+    expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent("记录抓“猴麦仔”1只时歪出");
+    expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 1");
+  });
+
   it("records gifted captures without affecting own capture stats", async () => {
     const user = userEvent.setup();
     render(<App />);

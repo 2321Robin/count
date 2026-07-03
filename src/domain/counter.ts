@@ -134,8 +134,7 @@ export function recordAcquisition(data: AppData, creatureId: string, input: Reco
   if (!creature) return data;
 
   const targetCreature = getCurrentRoundTarget(data) ?? creature;
-  const requestedOffTarget = input.isOffTarget ?? targetCreature.id !== creatureId;
-  const isOffTarget = requestedOffTarget && targetCreature.id !== creatureId;
+  const isOffTarget = input.isOffTarget ?? targetCreature.id !== creatureId;
   const roundBreakdown = getCurrentRoundBreakdown(data, isOffTarget ? targetCreature.id : creatureId);
   const roundCreatureIds = new Set(roundBreakdown.map((item) => item.creatureId));
   const roundEncounters = roundBreakdown.reduce((sum, item) => sum + item.encounters, 0);

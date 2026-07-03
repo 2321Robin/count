@@ -230,6 +230,32 @@ describe("counter domain", () => {
     expect(next.currentRound?.creatureIds).toEqual([targetId]);
   });
 
+  it("keeps current round counts when the active target is manually marked off-target", () => {
+    const data = createDefaultData();
+    const targetId = data.creatures[0].id;
+    const targeted = setCurrentRoundTarget(data, targetId);
+    const counted = incrementEncounter(incrementEncounter(targeted, targetId), targetId);
+
+    const next = recordAcquisition(counted, targetId, {
+      date: "2026-05-22T08:09:10",
+      location: "",
+      notes: "歪了",
+      isOffTarget: true,
+    });
+
+    expect(next.records[0]).toMatchObject({
+      creatureId: targetId,
+      isOffTarget: true,
+      targetCreatureId: targetId,
+      targetCreatureName: data.creatures[0].name,
+      targetRoundEncounters: 2,
+      roundEncounters: 2,
+      notes: "歪了",
+    });
+    expect(next.creatures[0].currentEncounters).toBe(2);
+    expect(next.currentRound?.creatureIds).toEqual([targetId]);
+  });
+
   it("can record a different creature as not off-target and clear active counts", () => {
     const data = createDefaultData();
     const targetId = data.creatures[0].id;
