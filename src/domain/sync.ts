@@ -1,8 +1,9 @@
 import { migrateAppData } from "./migration";
+import { DEFAULT_SEASON_ID, getSeasonConfig } from "./seasons";
+import type { SeasonId } from "./seasons";
 import type { AppData } from "./types";
 
 const GIST_API_URL = "https://api.github.com/gists";
-const GIST_FILE_NAME = "s2-capture-counter.json";
 const TOKEN_STORAGE_KEY = "s2-capture-counter:github-token";
 const GIST_ID_STORAGE_KEY = "s2-capture-counter:gist-id";
 
@@ -73,12 +74,13 @@ function syncError(prefix: string, status: number): string {
   return `${prefix}失败：GitHub 返回 ${status}。`;
 }
 
-async function parseGistData(response: Response): Promise<AppData | null> {
+async function parseGistData(response: Response, seasonId: SeasonId): Promise<AppData | null> {
   const payload = await response.json() as { files?: Record<string, { content?: string }> };
-  const content = payload.files?.[GIST_FILE_NAME]?.content;
+  const { syncFileName } = getSeasonConfig(seasonId);
+  const content = payload.files?.[syncFileName]?.content;
   if (typeof content !== "string") return null;
   try {
-    return migrateAppData(JSON.parse(content));
+    return migrateAppData(JSON.parse(content), seasonId);
   } catch {
     return null;
   }
@@ -86,7 +88,7 @@ async function parseGistData(response: Response): Promise<AppData | null> {
 
 export type PushSyncResult = { ok: true; gistId: string } | { ok: false; error: string };
 
-export async function pullFromGist(config: SyncConfig): Promise<SyncResult> {
+export async function pullFromGist(config: SyncConfig, seasonId: SeasonId = DEFAULT_SEASON_ID): Promise<SyncResult> {
   const token = config.token.trim();
   const gistId = config.gistId.trim();
   if (!token || !gistId) return { ok: false, error: "请先填写 GitHub Token 和 Gist ID。" };
@@ -95,7 +97,7 @@ export async function pullFromGist(config: SyncConfig): Promise<SyncResult> {
     const response = await fetch(`${GIST_API_URL}/${gistId}`, { headers: authHeaders(token) });
     if (!response.ok) return { ok: false, error: syncError("拉取", response.status) };
 
-    const data = await parseGistData(response);
+    const data = await parseGistData(response, seasonId);
     if (!data) return { ok: false, error: "拉取失败：Gist 中没有有效的计数器数据。" };
     return { ok: true, data };
   } catch {
@@ -103,19 +105,20 @@ export async function pullFromGist(config: SyncConfig): Promise<SyncResult> {
   }
 }
 
-export async function pushToGist(data: AppData, config: SyncConfig): Promise<PushSyncResult> {
+export async function pushToGist(data: AppData, config: SyncConfig, seasonId: SeasonId = DEFAULT_SEASON_ID): Promise<PushSyncResult> {
   const token = config.token.trim();
   const gistId = config.gistId.trim();
   if (!token) return { ok: false, error: "请先填写 GitHub Token。" };
+  const { label, syncFileName } = getSeasonConfig(seasonId);
 
   const body = JSON.stringify({
-    description: "S2 capture counter backup",
+    description: `${label} capture counter backup`,
     public: false,
     files: {
-      [GIST_FILE_NAME]: {
+      [syncFileName]: {
         content: JSON.stringify(data, null, 2),
       },
-    },
+    }
   });
 
   try {

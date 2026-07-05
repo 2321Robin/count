@@ -1,5 +1,7 @@
 import { createDefaultData } from "./defaultData";
 import { formatDateTimeInput, normalizeRecordDate } from "./dateTime";
+import { DEFAULT_SEASON_ID } from "./seasons";
+import type { SeasonId } from "./seasons";
 import type {
   AcquisitionRecord,
   AppData,
@@ -229,10 +231,10 @@ function migrateCurrentRound(data: RawAppData, creatures: Creature[]): CurrentRo
   return creatureIds.length === 0 ? null : { creatureIds, targetCreatureId: null, updatedAt: formatDateTimeInput() };
 }
 
-export function migrateAppData(value: unknown): AppData | null {
+export function migrateAppData(value: unknown, seasonId: SeasonId = DEFAULT_SEASON_ID): AppData | null {
   if (!isRawAppData(value)) return null;
 
-  const defaultById = new Map(createDefaultData().creatures.map((creature) => [creature.id, creature]));
+  const defaultById = new Map(createDefaultData(seasonId).creatures.map((creature) => [creature.id, creature]));
   const creatures = value.creatures.map((creature) => migrateCreature(creature, defaultById));
   const migrated: AppData = {
     version: 3,
@@ -246,6 +248,6 @@ export function migrateAppData(value: unknown): AppData | null {
   return migrated;
 }
 
-export function isAppData(value: unknown): value is AppData {
-  return migrateAppData(value) !== null;
+export function isAppData(value: unknown, seasonId: SeasonId = DEFAULT_SEASON_ID): value is AppData {
+  return migrateAppData(value, seasonId) !== null;
 }

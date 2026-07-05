@@ -143,8 +143,8 @@ select { appearance: none; border: 1px solid var(--border); border-radius: 12px;
 .hero h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.5rem); }
 .hero p { margin: 0.35rem 0 0; color: var(--muted); }
 .heroActions { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; justify-content: flex-end; }
-.themePicker { display: grid; gap: 6px; color: var(--muted); font-size: 0.85rem; }
-.themePicker select { min-width: 8.75rem; }
+.themePicker, .seasonPicker { display: grid; gap: 6px; color: var(--muted); font-size: 0.85rem; }
+.themePicker select, .seasonPicker select { min-width: 8.75rem; }
 .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.75rem; font-weight: 800; }
 
 .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; overflow: hidden; margin-bottom: 16px; }
@@ -197,7 +197,7 @@ select { appearance: none; border: 1px solid var(--border); border-radius: 12px;
 @media (max-width: 720px) {
   .hero { align-items: stretch; flex-direction: column; }
   .heroActions { justify-content: stretch; }
-  .heroActions button, .themePicker, .themePicker select { width: 100%; }
+  .heroActions button, .themePicker, .themePicker select, .seasonPicker, .seasonPicker select { width: 100%; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .counterRow { grid-template-columns: 1fr; }
   .creatureNamePane { border-right: 0; border-bottom: 1px solid var(--border); }

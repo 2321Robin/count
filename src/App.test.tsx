@@ -3,12 +3,28 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { HistoryList } from "./components/HistoryList";
+import { createDefaultData } from "./domain/defaultData";
+import { SELECTED_SEASON_KEY, seasons } from "./domain/seasons";
+import { S2_STORAGE_KEY, S3_STORAGE_KEY } from "./domain/storage";
 import type { AcquisitionRecord, AppData } from "./domain/types";
+
+function enableTestS3() {
+  seasons.s3.isAvailable = true;
+  seasons.s3.defaultCreatures = [
+    { id: "s3-test-creature", name: "S3 测试精灵", targetCount: 80, location: "", notes: "" },
+  ];
+}
+
+function resetTestS3() {
+  seasons.s3.isAvailable = false;
+  seasons.s3.defaultCreatures = [];
+}
 
 describe("App", () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => {
     cleanup();
+    resetTestS3();
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -25,6 +41,163 @@ describe("App", () => {
     expect(screen.getAllByText("目标 80")[0]).toBeInTheDocument();
     expect(screen.queryByText("限定异色精灵")).not.toBeInTheDocument();
     expect(screen.queryByText("Past")).not.toBeInTheDocument();
+  });
+
+  it("loads existing S2 storage by default", () => {
+    const saved = {
+      ...createDefaultData("s2"),
+      creatures: createDefaultData("s2").creatures.map((creature, index) => index === 0 ? { ...creature, name: "S2 已保存", totalEncounters: 5 } : creature),
+    };
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(saved));
+
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /S2 已保存/ })).toBeInTheDocument();
+    expect(screen.getByText("当前操作仅影响 S2 数据，不会修改其它赛季记录。")).toBeInTheDocument();
+  });
+
+  it("loads the persisted S3 selection when S3 is available", () => {
+    enableTestS3();
+    const s3Data = {
+      ...createDefaultData("s3"),
+      creatures: [{ ...createDefaultData("s3").creatures[0], totalEncounters: 2 }],
+    };
+    localStorage.setItem(SELECTED_SEASON_KEY, "s3");
+    localStorage.setItem(S3_STORAGE_KEY, JSON.stringify(s3Data));
+
+    render(<App />);
+
+    expect(screen.getByLabelText("赛季")).toHaveValue("s3");
+    expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /S3 测试精灵/ })).toBeInTheDocument();
+    expect(screen.queryByRole("listitem", { name: /猴麦仔/ })).not.toBeInTheDocument();
+  });
+
+  it("switches seasons without saving old-season data into the new key", async () => {
+    enableTestS3();
+    const user = userEvent.setup();
+    const s2Data = createDefaultData("s2");
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(s2Data));
+
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "新增精灵" }));
+    expect(screen.getByLabelText("名称")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+
+    expect(screen.queryByLabelText("名称")).not.toBeInTheDocument();
+    expect(localStorage.getItem(SELECTED_SEASON_KEY)).toBe("s3");
+    expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
+    expect(localStorage.getItem(S2_STORAGE_KEY)).toBe(JSON.stringify(s2Data));
+    expect(localStorage.getItem(S3_STORAGE_KEY)).not.toBe(JSON.stringify(s2Data));
+  });
+
+  it("increments the selected S3 season without mutating S2 storage", async () => {
+    enableTestS3();
+    const user = userEvent.setup();
+    const s2Data = createDefaultData("s2");
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(s2Data));
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+    await user.click(screen.getByRole("button", { name: "+1" }));
+
+    expect(localStorage.getItem(S2_STORAGE_KEY)).toBe(JSON.stringify(s2Data));
+    const savedS3 = JSON.parse(localStorage.getItem(S3_STORAGE_KEY) ?? "null") as AppData;
+    expect(savedS3.creatures[0]).toMatchObject({ id: "s3-test-creature", currentEncounters: 1, totalEncounters: 1 });
+  });
+
+  it("exports the selected season file name", async () => {
+    enableTestS3();
+    const user = userEvent.setup();
+    const createElement = document.createElement.bind(document);
+    const link = createElement("a") as HTMLAnchorElement;
+    const clickSpy = vi.spyOn(link, "click").mockImplementation(() => {});
+    vi.spyOn(document, "createElement").mockImplementation((tagName: string) => tagName === "a" ? link : createElement(tagName));
+    vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:url"), revokeObjectURL: vi.fn() });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "导出 JSON" }));
+    expect(link.download).toBe("s2-capture-counter-backup.json");
+
+    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+    fireEvent.click(screen.getByRole("button", { name: "导出 JSON" }));
+    expect(link.download).toBe("s3-capture-counter-backup.json");
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("manual upload writes the selected season gist file", async () => {
+    enableTestS3();
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ id: "gist-created" }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+    await user.click(screen.getByRole("button", { name: "展开多端同步" }));
+    await user.type(screen.getByLabelText("GitHub Token"), "token-1");
+    await user.click(screen.getByRole("button", { name: "上传本机数据" }));
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
+    expect(body.files["s3-capture-counter.json"]).toBeDefined();
+    expect(body.files["s2-capture-counter.json"]).toBeUndefined();
+  });
+
+  it("ignores manual pull results after switching seasons", async () => {
+    enableTestS3();
+    const user = userEvent.setup();
+    const s2Cloud: AppData = {
+      ...createDefaultData("s2"),
+      creatures: [{ ...createDefaultData("s2").creatures[0], name: "云端 S2", currentEncounters: 5, totalEncounters: 5 }],
+    };
+    let resolvePull: (response: Response) => void = () => {};
+    const pullResponse = new Promise<Response>((resolve) => {
+      resolvePull = resolve;
+    });
+    vi.stubGlobal("fetch", vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => pullResponse));
+
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "展开多端同步" }));
+    await user.type(screen.getByLabelText("GitHub Token"), "token-1");
+    await user.type(screen.getByLabelText("Gist ID"), "gist-1");
+    await user.click(screen.getByRole("button", { name: "拉取云端数据" }));
+    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+
+    resolvePull(new Response(JSON.stringify({ files: { "s2-capture-counter.json": { content: JSON.stringify(s2Cloud) } } }), { status: 200 }));
+    await act(async () => {});
+
+    expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /S3 测试精灵/ })).toBeInTheDocument();
+    expect(screen.queryByRole("listitem", { name: /云端 S2/ })).not.toBeInTheDocument();
+    expect(localStorage.getItem(S3_STORAGE_KEY) ?? "").not.toContain("云端 S2");
+  });
+
+  it("ignores imported data after switching seasons before the file finishes reading", async () => {
+    enableTestS3();
+    const user = userEvent.setup();
+    const s2Import: AppData = {
+      ...createDefaultData("s2"),
+      creatures: [{ ...createDefaultData("s2").creatures[0], name: "导入 S2", currentEncounters: 3, totalEncounters: 3 }],
+    };
+    let resolveText: (value: string) => void = () => {};
+    const textPromise = new Promise<string>((resolve) => {
+      resolveText = resolve;
+    });
+    const file = new File(["pending"], "s2-backup.json", { type: "application/json" });
+    Object.defineProperty(file, "text", { value: vi.fn(() => textPromise) });
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText("导入 JSON"), { target: { files: [file] } });
+    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+
+    resolveText(JSON.stringify(s2Import));
+    await act(async () => {});
+
+    expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /S3 测试精灵/ })).toBeInTheDocument();
+    expect(screen.queryByRole("listitem", { name: /导入 S2/ })).not.toBeInTheDocument();
+    expect(localStorage.getItem(S3_STORAGE_KEY) ?? "").not.toContain("导入 S2");
   });
 
   it("switches and persists the color theme", async () => {

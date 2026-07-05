@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import type { SyncConfig } from "../domain/sync";
 
 type Props = {
+  seasonLabel: string;
   message: string;
   lastSyncAt: string | null;
   syncConfig: SyncConfig;
@@ -17,7 +18,7 @@ type Props = {
   onReset: () => void;
 };
 
-export function DataManager({ message, lastSyncAt, syncConfig, syncBusy, onSaveSyncConfig, onPushSync, onPullSync, onDisconnectSync, onExport, onImport, onClear, onReset }: Props) {
+export function DataManager({ seasonLabel, message, lastSyncAt, syncConfig, syncBusy, onSaveSyncConfig, onPushSync, onPullSync, onDisconnectSync, onExport, onImport, onClear, onReset }: Props) {
   const [token, setToken] = useState(syncConfig.token);
   const [gistId, setGistId] = useState(syncConfig.gistId);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
@@ -37,6 +38,7 @@ export function DataManager({ message, lastSyncAt, syncConfig, syncBusy, onSaveS
         <div>
           <h2>数据管理与多端同步</h2>
           <p>配置 GitHub Gist 后，打开页面会自动检查云端数据，并在本机数据变化后自动上传。</p>
+          <p>当前操作仅影响 {seasonLabel} 数据，不会修改其它赛季记录。</p>
         </div>
         <button type="button" className="ghost" aria-expanded={isSyncOpen} aria-controls="sync-panel-details" onClick={() => setIsSyncOpen((value) => !value)}>
           {isSyncOpen ? "收起多端同步" : "展开多端同步"}
@@ -52,7 +54,7 @@ export function DataManager({ message, lastSyncAt, syncConfig, syncBusy, onSaveS
         <button type="button" className="danger" onClick={onClear}>清空所有数据</button>
         <button type="button" onClick={onReset}>重置默认数据</button>
       </div>
-      <p className="muted">导出前建议先保存一份备份；导入会自动兼容旧版数据并升级到新版结构。</p>
+      <p className="muted">导出前建议先保存一份备份；导入会覆盖当前选中的赛季数据，并自动兼容旧版数据。</p>
       {isSyncOpen && (
         <div id="sync-panel-details">
           <form onSubmit={submitSync}>
@@ -65,7 +67,8 @@ export function DataManager({ message, lastSyncAt, syncConfig, syncBusy, onSaveS
               <button type="button" disabled={syncBusy} onClick={onDisconnectSync}>退出同步</button>
             </div>
           </form>
-          <p className="muted">拉取时会比较本机和云端总抓取数，并保留更高的版本；Token 仅保存在当前浏览器。</p>
+          <p className="muted">同步只处理当前赛季的云端文件；拉取时会比较本机和云端总抓取数，并保留更高的版本。</p>
+          <p className="muted">Token 仅保存在当前浏览器。</p>
           <p className="muted">上次同步：{lastSyncAt ? new Date(lastSyncAt).toLocaleString("zh-CN", { hour12: false }) : "暂无"}</p>
         </div>
       )}

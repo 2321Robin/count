@@ -29,14 +29,27 @@ describe("sync", () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "gist-created" }), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await pushToGist(createDefaultData(), { token: "token", gistId: "" });
+    const result = await pushToGist(createDefaultData("s2"), { token: "token", gistId: "" }, "s2");
 
     expect(result).toEqual({ ok: true, gistId: "gist-created" });
     expect(fetchMock).toHaveBeenCalledWith("https://api.github.com/gists", expect.objectContaining({ method: "POST" }));
   });
 
+  it("pushes current S3 data to the S3 gist file", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ id: "gist-created" }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const data = { ...createDefaultData("s3"), creatures: [{ id: "s3-custom", name: "S3 自定义", targetCount: 80, currentEncounters: 0, totalEncounters: 0, location: "", notes: "", isDefault: false }] };
+
+    const result = await pushToGist(data, { token: "token", gistId: "" }, "s3");
+
+    expect(result).toEqual({ ok: true, gistId: "gist-created" });
+    const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
+    expect(body.files["s3-capture-counter.json"].content).toBe(JSON.stringify(data, null, 2));
+    expect(body.files["s2-capture-counter.json"]).toBeUndefined();
+  });
+
   it("pulls and migrates app data from a gist", async () => {
-    const data = createDefaultData();
+    const data = createDefaultData("s2");
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({
       files: {
         "s2-capture-counter.json": { content: JSON.stringify(data) },
@@ -44,17 +57,43 @@ describe("sync", () => {
     }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await pullFromGist({ token: "token", gistId: "gist" });
+    const result = await pullFromGist({ token: "token", gistId: "gist" }, "s2");
 
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data?.version).toBe(3);
     expect(fetchMock).toHaveBeenCalledWith("https://api.github.com/gists/gist", expect.any(Object));
   });
 
+  it("pulls current S3 data from the S3 gist file", async () => {
+    const data = { ...createDefaultData("s3"), creatures: [{ id: "s3-custom", name: "S3 自定义", targetCount: 80, currentEncounters: 0, totalEncounters: 0, location: "", notes: "", isDefault: false }] };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      files: {
+        "s3-capture-counter.json": { content: JSON.stringify(data) },
+      },
+    }), { status: 200 })));
+
+    const result = await pullFromGist({ token: "token", gistId: "gist" }, "s3");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.creatures[0].name).toBe("S3 自定义");
+  });
+
+  it("does not pull S2 data when the selected S3 gist file is missing", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      files: {
+        "s2-capture-counter.json": { content: JSON.stringify(createDefaultData("s2")) },
+      },
+    }), { status: 200 })));
+
+    const result = await pullFromGist({ token: "token", gistId: "gist" }, "s3");
+
+    expect(result).toEqual({ ok: false, error: "拉取失败：Gist 中没有有效的计数器数据。" });
+  });
+
   it("reports auth failures", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 403 })));
 
-    const result = await pullFromGist({ token: "bad", gistId: "gist" });
+    const result = await pullFromGist({ token: "bad", gistId: "gist" }, "s2");
 
     expect(result).toEqual({ ok: false, error: "拉取失败：GitHub Token 无效或没有 gist 权限。" });
   });

@@ -31,6 +31,29 @@ describe("import export", () => {
     if (result.ok) expect(result.data.creatures).toHaveLength(data.creatures.length);
   });
 
+  it("parses imported data with the selected season context", () => {
+    const data = createDefaultData("s3");
+    const result = parseImportedData(JSON.stringify(data), "s3");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toEqual(createDefaultData("s3"));
+  });
+
+  it("does not repair imported S2 default metadata while importing into S3", () => {
+    const data = createDefaultData("s2");
+    const changed = {
+      ...data,
+      creatures: data.creatures.map((creature, index) => index === 0 ? { ...creature, targetCount: 500, location: "S2 旧地点", notes: "S2 旧备注" } : creature),
+    };
+
+    const result = parseImportedData(JSON.stringify(changed), "s3");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.creatures[0]).toMatchObject({ targetCount: 500, location: "S2 旧地点", notes: "S2 旧备注" });
+    }
+  });
+
   it("parses and migrates valid imported v1 data", () => {
     const data = createDefaultData();
     const { giftedRecords: _giftedRecords, currentRound: _currentRound, ...v1Data } = data;

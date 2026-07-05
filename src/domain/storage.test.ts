@@ -4,7 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultData } from "./defaultData";
-import { loadAppData, saveAppData, STORAGE_KEY } from "./storage";
+import { loadAppData, saveAppData, S2_STORAGE_KEY, S3_STORAGE_KEY } from "./storage";
 
 describe("storage", () => {
   beforeEach(() => {
@@ -19,24 +19,48 @@ describe("storage", () => {
   });
 
   it("loads defaults when storage is empty", () => {
-    const data = loadAppData();
+    const data = loadAppData("s2");
 
     expect(data.version).toBe(3);
     expect(data.creatures.length).toBeGreaterThan(0);
     expect(data.giftedRecords).toEqual([]);
   });
 
-  it("saves and loads app data", () => {
-    const data = createDefaultData();
+  it("saves and loads S2 app data from the existing key", () => {
+    const data = createDefaultData("s2");
     const changed = { ...data, creatures: [{ ...data.creatures[0], name: "已保存" }] };
 
-    saveAppData(changed);
+    saveAppData("s2", changed);
 
-    expect(loadAppData().creatures[0].name).toBe("已保存");
+    expect(localStorage.getItem(S2_STORAGE_KEY)).toBe(JSON.stringify(changed));
+    expect(localStorage.getItem(S3_STORAGE_KEY)).toBeNull();
+    expect(loadAppData("s2").creatures[0].name).toBe("已保存");
+  });
+
+  it("isolates S3 storage from S2 storage", () => {
+    const s2Data = createDefaultData("s2");
+    const s3Data = { ...createDefaultData("s3"), creatures: [{ id: "s3-custom", name: "S3 自定义", targetCount: 80, currentEncounters: 0, totalEncounters: 0, location: "", notes: "", isDefault: false }] };
+
+    saveAppData("s2", s2Data);
+    saveAppData("s3", s3Data);
+
+    expect(loadAppData("s2").creatures[0].name).toBe("猴麦仔");
+    expect(loadAppData("s3").creatures[0].name).toBe("S3 自定义");
+    expect(localStorage.getItem(S2_STORAGE_KEY)).toBe(JSON.stringify(s2Data));
+    expect(localStorage.getItem(S3_STORAGE_KEY)).toBe(JSON.stringify(s3Data));
+  });
+
+  it("loads empty S3 defaults without falling back to S2 data", () => {
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(createDefaultData("s2")));
+
+    const loaded = loadAppData("s3");
+
+    expect(loaded).toEqual(createDefaultData("s3"));
+    expect(loaded.creatures).toEqual([]);
   });
 
   it("migrates v1 default creature targets while keeping counts", () => {
-    const oldData = createDefaultData();
+    const oldData = createDefaultData("s2");
     const saved = {
       ...oldData,
       version: 1,
@@ -51,9 +75,9 @@ describe("storage", () => {
         notes: index === 0 ? "Past" : creature.notes,
       })),
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(saved));
 
-    const loaded = loadAppData();
+    const loaded = loadAppData("s2");
 
     expect(loaded.version).toBe(3);
     expect(loaded.creatures[0]).toMatchObject({
@@ -68,7 +92,7 @@ describe("storage", () => {
   });
 
   it("migrates old records with acquisition numbers, timestamps, and breakdowns", () => {
-    const data = createDefaultData();
+    const data = createDefaultData("s2");
     const oldRecords = [
       {
         id: "record-newest-first-creature",
@@ -101,9 +125,9 @@ describe("storage", () => {
         notes: "",
       },
     ];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 1, giftedRecords: undefined, currentRound: undefined, records: oldRecords }));
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify({ ...data, version: 1, giftedRecords: undefined, currentRound: undefined, records: oldRecords }));
 
-    const loaded = loadAppData();
+    const loaded = loadAppData("s2");
 
     expect(loaded.records.map((record) => record.acquisitionNumber)).toEqual([2, 1, 1]);
     expect(loaded.records.map((record) => record.date)).toEqual([
@@ -117,8 +141,8 @@ describe("storage", () => {
   });
 
   it("migrates v2 gifted record timestamps", () => {
-    const data = createDefaultData();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    const data = createDefaultData("s2");
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify({
       ...data,
       giftedRecords: [{
         id: "gift-1",
@@ -130,14 +154,14 @@ describe("storage", () => {
       }],
     }));
 
-    const loaded = loadAppData();
+    const loaded = loadAppData("s2");
 
     expect(loaded.giftedRecords[0].receivedAt).toBe("2026-05-24T00:00:00");
   });
 
-  it("falls back to defaults for malformed storage", () => {
-    localStorage.setItem(STORAGE_KEY, "not json");
+  it("falls back to selected-season defaults for malformed storage", () => {
+    localStorage.setItem(S3_STORAGE_KEY, "not json");
 
-    expect(loadAppData().version).toBe(3);
+    expect(loadAppData("s3")).toEqual(createDefaultData("s3"));
   });
 });

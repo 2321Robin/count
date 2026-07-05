@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { createDefaultData } from "./defaultData";
+import { getSeasonConfig } from "./seasons";
 import {
   addCreature,
   calculateStats,
@@ -17,8 +18,8 @@ import {
 } from "./counter";
 
 describe("counter domain", () => {
-  it("creates default data with S2 creatures", () => {
-    const data = createDefaultData();
+  it("creates S2 default data from the existing creature list", () => {
+    const data = createDefaultData("s2");
     const defaultNames = data.creatures.map((creature) => creature.name);
 
     expect(data.version).toBe(3);
@@ -42,14 +43,15 @@ describe("counter domain", () => {
       "爆焰喷喷",
       "雪怪",
     ]);
-    expect(data.creatures[0]).toMatchObject({
-      targetCount: 80,
-      currentEncounters: 0,
-      totalEncounters: 0,
-      isDefault: true,
-    });
+    expect(data.creatures.every((creature) => creature.currentEncounters === 0 && creature.totalEncounters === 0 && creature.isDefault)).toBe(true);
+    expect(data.records).toEqual([]);
     expect(data.giftedRecords).toEqual([]);
     expect(data.currentRound).toBeNull();
+  });
+
+  it("does not expose S3 defaults before S3 is available", () => {
+    expect(getSeasonConfig("s3").isAvailable).toBe(false);
+    expect(getSeasonConfig("s3").defaultCreatures).toEqual([]);
   });
 
   it("increments current and total encounters and joins the active round", () => {

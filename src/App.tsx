@@ -11,6 +11,8 @@ import { RecordDialog } from "./components/RecordDialog";
 import { addCreature, calculateStats, decrementEncounter, getCurrentRoundTarget, incrementEncounter, recordAcquisition, recordGiftedCapture, removeCreature, resetCurrentRoundCounts, setCurrentRoundTarget, setCurrentRoundTargets, startNewRound, updateCreature } from "./domain/counter";
 import { createDefaultData } from "./domain/defaultData";
 import { exportAppData, parseImportedData } from "./domain/importExport";
+import { DEFAULT_SEASON_ID, getAvailableSeasonIds, getSeasonConfig, isSeasonId, SELECTED_SEASON_KEY } from "./domain/seasons";
+import type { SeasonId } from "./domain/seasons";
 import { loadAppData, saveAppData } from "./domain/storage";
 import { clearSyncConfig, loadSyncConfig, pullFromGist, pushToGist, saveSyncConfig, selectHigherTotalData } from "./domain/sync";
 import type { SyncConfig } from "./domain/sync";
@@ -30,8 +32,16 @@ function loadTheme(): Theme {
   return isTheme(theme) ? theme : "fantasy";
 }
 
+function loadSelectedSeason(): SeasonId {
+  const saved = localStorage.getItem(SELECTED_SEASON_KEY);
+  if (isSeasonId(saved) && getSeasonConfig(saved).isAvailable) return saved;
+  return DEFAULT_SEASON_ID;
+}
+
 export default function App() {
-  const [data, setData] = useState<AppData>(() => loadAppData());
+  const [seasonId, setSeasonId] = useState<SeasonId>(() => loadSelectedSeason());
+  const season = getSeasonConfig(seasonId);
+  const [data, setData] = useState<AppData>(() => loadAppData(seasonId));
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [editing, setEditing] = useState<Creature | null | "new">(null);
   const [recording, setRecording] = useState<Creature | null>(null);
@@ -43,18 +53,31 @@ export default function App() {
   const recordDialogRef = useRef<HTMLDivElement>(null);
   const giftedRecordDialogRef = useRef<HTMLDivElement>(null);
   const dataRef = useRef(data);
+  const seasonIdRef = useRef(seasonId);
   const hasHydratedRef = useRef(false);
   const hasTrackedInitialDataRef = useRef(false);
   const preHydrationDirtyRef = useRef(false);
   const skipNextAutoUploadRef = useRef(false);
+  const skipNextSaveRef = useRef(false);
   const [hydrationRevision, setHydrationRevision] = useState(0);
 
-  useEffect(() => saveAppData(data), [data]);
+  useEffect(() => {
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    saveAppData(seasonId, data);
+  }, [seasonId, data]);
   useEffect(() => localStorage.setItem(THEME_KEY, theme), [theme]);
+  useEffect(() => localStorage.setItem(SELECTED_SEASON_KEY, seasonId), [seasonId]);
 
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
+
+  useEffect(() => {
+    seasonIdRef.current = seasonId;
+  }, [seasonId]);
 
   useEffect(() => {
     if (!hasTrackedInitialDataRef.current) {
@@ -81,7 +104,7 @@ export default function App() {
 
     let cancelled = false;
     setSyncBusy(true);
-    pullFromGist(config).then((result) => {
+    pullFromGist(config, seasonId).then((result) => {
       if (cancelled) return;
       if (result.ok) applyPulledData(result.data);
       else setMessage(result.error);
@@ -96,7 +119,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [seasonId]);
 
   useEffect(() => {
     if (!hasHydratedRef.current) return;
@@ -109,8 +132,9 @@ export default function App() {
     if (!config.token.trim() || !config.gistId.trim()) return;
 
     let cancelled = false;
+    const uploadSeasonId = seasonId;
     const timeoutId = window.setTimeout(() => {
-      pushToGist(dataRef.current, config).then((result) => {
+      pushToGist(dataRef.current, config, uploadSeasonId).then((result) => {
         if (cancelled) return;
         if (!result.ok) {
           setMessage(result.error);
@@ -130,11 +154,32 @@ export default function App() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [data, syncConfig, hydrationRevision]);
+  }, [data, syncConfig, hydrationRevision, seasonId]);
 
   function apply(next: AppData) {
     setData(next);
     setMessage("");
+  }
+
+  function switchSeason(nextSeasonId: SeasonId) {
+    const nextSeason = getSeasonConfig(nextSeasonId);
+    if (!nextSeason.isAvailable || nextSeasonId === seasonId) return;
+
+    saveAppData(seasonId, dataRef.current);
+    localStorage.setItem(SELECTED_SEASON_KEY, nextSeasonId);
+    skipNextSaveRef.current = true;
+    skipNextAutoUploadRef.current = true;
+    hasHydratedRef.current = false;
+    hasTrackedInitialDataRef.current = false;
+    preHydrationDirtyRef.current = false;
+    setEditing(null);
+    setRecording(null);
+    setRecordingGift(null);
+    setSyncBusy(false);
+    setMessage("");
+    setSeasonId(nextSeasonId);
+    setData(loadAppData(nextSeasonId));
+    setHydrationRevision((revision) => revision + 1);
   }
 
   function saveCreature(input: CreatureInput) {
@@ -194,7 +239,7 @@ export default function App() {
 
   async function pushSync(config: SyncConfig) {
     setSyncBusy(true);
-    const result = await pushToGist(data, config);
+    const result = await pushToGist(data, config, seasonId);
     setSyncBusy(false);
     if (!result.ok) {
       setMessage(result.error);
@@ -209,8 +254,10 @@ export default function App() {
   }
 
   async function pullSync(config: SyncConfig) {
+    const requestedSeasonId = seasonId;
     setSyncBusy(true);
-    const result = await pullFromGist(config);
+    const result = await pullFromGist(config, requestedSeasonId);
+    if (requestedSeasonId !== seasonIdRef.current) return;
     setSyncBusy(false);
     if (!result.ok) {
       setMessage(result.error);
@@ -230,14 +277,17 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "s2-capture-counter-backup.json";
+    link.download = season.exportFileName;
     link.click();
     URL.revokeObjectURL(url);
     setMessage("导出成功。");
   }
 
   async function importData(file: File) {
-    const result = parseImportedData(await file.text());
+    const requestedSeasonId = seasonId;
+    const raw = await file.text();
+    if (requestedSeasonId !== seasonIdRef.current) return;
+    const result = parseImportedData(raw, requestedSeasonId);
     if (!result.ok) {
       setMessage(result.error);
       return;
@@ -247,11 +297,11 @@ export default function App() {
   }
 
   function clearData() {
-    if (window.confirm("确定清空所有数据？此操作不可撤销。")) apply({ version: 3, creatures: [], records: [], giftedRecords: [], currentRound: null, settings: { sortMode: "default" } });
+    if (window.confirm(`确定清空 ${season.label} 的所有数据？此操作不会影响其它赛季，但不可撤销。`)) apply({ version: 3, creatures: [], records: [], giftedRecords: [], currentRound: null, settings: { sortMode: "default" } });
   }
 
   function resetData() {
-    if (window.confirm("确定重置为默认数据？当前记录会被清空。")) apply(createDefaultData());
+    if (window.confirm(`确定将 ${season.label} 重置为默认数据？当前 ${season.label} 记录会被清空，不会影响其它赛季。`)) apply(createDefaultData(seasonId));
   }
 
   function removeCustomCreature(id: string) {
@@ -262,11 +312,18 @@ export default function App() {
     <main className="app" data-theme={theme}>
       <header className="hero">
         <div>
-          <p className="eyebrow">Roco World S2</p>
-          <h1>S2 捕捉计数器</h1>
-          <p>按精灵记录遭遇次数、本轮进度和获得历史。</p>
+          <p className="eyebrow">{season.eyebrow}</p>
+          <h1>{season.title}</h1>
+          <p>{season.description}</p>
         </div>
         <div className="heroActions">
+          <label className="seasonPicker">赛季
+            <select value={seasonId} onChange={(event) => switchSeason(event.target.value as SeasonId)}>
+              {getAvailableSeasonIds().map((id) => (
+                <option key={id} value={id}>{getSeasonConfig(id).label}</option>
+              ))}
+            </select>
+          </label>
           <label className="themePicker">主题
             <select value={theme} onChange={(event) => setTheme(event.target.value as Theme)}>
               <option value="fantasy">洛克幻想</option>
@@ -294,7 +351,7 @@ export default function App() {
         onRecordGift={openGiftedRecordDialog}
         onRemove={removeCustomCreature}
       />
-      <DataManager message={message} lastSyncAt={lastSyncAt} syncConfig={syncConfig} syncBusy={syncBusy} onSaveSyncConfig={updateSyncConfig} onPushSync={pushSync} onPullSync={pullSync} onDisconnectSync={disconnectSync} onExport={exportData} onImport={importData} onClear={clearData} onReset={resetData} />
+      <DataManager seasonLabel={season.label} message={message} lastSyncAt={lastSyncAt} syncConfig={syncConfig} syncBusy={syncBusy} onSaveSyncConfig={updateSyncConfig} onPushSync={pushSync} onPullSync={pullSync} onDisconnectSync={disconnectSync} onExport={exportData} onImport={importData} onClear={clearData} onReset={resetData} />
       <HistoryList records={data.records} />
       <GiftedHistoryList records={data.giftedRecords} />
     </main>
