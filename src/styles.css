@@ -158,7 +158,7 @@ select { appearance: none; border: 1px solid var(--border); border-radius: 12px;
 .creatureNamePane { display: grid; align-items: center; padding: 18px; border-right: 1px solid var(--border); background: var(--surface-strong); }
 .counterPane { display: grid; gap: 10px; padding: 14px 18px; background: var(--surface-soft); }
 .card h2, .panel h2 { margin: 0; }
-.categoryLabel { display: inline-block; margin-top: 4px; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: var(--surface-soft); color: var(--accent); border: 1px solid var(--border); line-height: 1.4; }
+.categoryLabel { justify-self: start; margin-top: 4px; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: var(--surface-soft); color: var(--accent); border: 1px solid var(--border); line-height: 1.4; }
 .card p { margin: 0; color: var(--muted); }
 .numbers { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
 .numbers strong { font-size: 1.2rem; color: var(--accent); }
