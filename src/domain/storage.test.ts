@@ -50,13 +50,14 @@ describe("storage", () => {
     expect(localStorage.getItem(S3_STORAGE_KEY)).toBe(JSON.stringify(s3Data));
   });
 
-  it("loads empty S3 defaults without falling back to S2 data", () => {
+  it("loads S3 defaults without falling back to S2 data", () => {
     localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(createDefaultData("s2")));
 
     const loaded = loadAppData("s3");
 
     expect(loaded).toEqual(createDefaultData("s3"));
-    expect(loaded.creatures).toEqual([]);
+    expect(loaded.creatures.length).toBe(20);
+    expect(loaded.creatures[0].name).toBe("苞米仔");
   });
 
   it("migrates v1 default creature targets while keeping counts", () => {

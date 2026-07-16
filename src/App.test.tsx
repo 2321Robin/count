@@ -10,14 +10,10 @@ import type { AcquisitionRecord, AppData } from "./domain/types";
 
 function enableTestS3() {
   seasons.s3.isAvailable = true;
-  seasons.s3.defaultCreatures = [
-    { id: "s3-test-creature", name: "S3 测试精灵", targetCount: 80, location: "", notes: "" },
-  ];
 }
 
 function resetTestS3() {
-  seasons.s3.isAvailable = false;
-  seasons.s3.defaultCreatures = [];
+  seasons.s3.isAvailable = true;
 }
 
 describe("App", () => {
@@ -33,17 +29,17 @@ describe("App", () => {
   it("renders the counter dashboard", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "数据管理与多端同步" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "展开当前轮次" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "展开多端同步" })).toBeInTheDocument();
-    expect(screen.getByRole("listitem", { name: /猴麦仔/ })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /苞米仔/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "S2" })).toHaveValue("s2");
     expect(screen.getAllByText("目标 80")[0]).toBeInTheDocument();
-    expect(screen.queryByText("限定异色精灵")).not.toBeInTheDocument();
-    expect(screen.queryByText("Past")).not.toBeInTheDocument();
   });
 
-  it("loads existing S2 storage by default", () => {
+  it("loads existing S2 storage when S2 is selected", () => {
+    localStorage.setItem(SELECTED_SEASON_KEY, "s2");
     const saved = {
       ...createDefaultData("s2"),
       creatures: createDefaultData("s2").creatures.map((creature, index) => index === 0 ? { ...creature, name: "S2 已保存", totalEncounters: 5 } : creature),
@@ -57,12 +53,9 @@ describe("App", () => {
     expect(screen.getByText("当前操作仅影响 S2 数据，不会修改其它赛季记录。")).toBeInTheDocument();
   });
 
-  it("loads the persisted S3 selection when S3 is available", () => {
+  it("loads the persisted S3 selection", () => {
     enableTestS3();
-    const s3Data = {
-      ...createDefaultData("s3"),
-      creatures: [{ ...createDefaultData("s3").creatures[0], totalEncounters: 2 }],
-    };
+    const s3Data = createDefaultData("s3");
     localStorage.setItem(SELECTED_SEASON_KEY, "s3");
     localStorage.setItem(S3_STORAGE_KEY, JSON.stringify(s3Data));
 
@@ -70,7 +63,7 @@ describe("App", () => {
 
     expect(screen.getByLabelText("赛季")).toHaveValue("s3");
     expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
-    expect(screen.getByRole("listitem", { name: /S3 测试精灵/ })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /苞米仔/ })).toBeInTheDocument();
     expect(screen.queryByRole("listitem", { name: /猴麦仔/ })).not.toBeInTheDocument();
   });
 
@@ -84,28 +77,29 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "新增精灵" }));
     expect(screen.getByLabelText("名称")).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+    await user.selectOptions(screen.getByLabelText("赛季"), "s2");
 
     expect(screen.queryByLabelText("名称")).not.toBeInTheDocument();
-    expect(localStorage.getItem(SELECTED_SEASON_KEY)).toBe("s3");
-    expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
-    expect(localStorage.getItem(S2_STORAGE_KEY)).toBe(JSON.stringify(s2Data));
-    expect(localStorage.getItem(S3_STORAGE_KEY)).not.toBe(JSON.stringify(s2Data));
+    expect(localStorage.getItem(SELECTED_SEASON_KEY)).toBe("s2");
+    expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
+    const savedS3 = JSON.parse(localStorage.getItem(S3_STORAGE_KEY) ?? "null") as AppData;
+    expect(savedS3.creatures[0].name).toBe("苞米仔");
+    const savedS2 = JSON.parse(localStorage.getItem(S2_STORAGE_KEY) ?? "null") as AppData;
+    expect(savedS2.creatures[0].name).toBe("猴麦仔");
   });
 
-  it("increments the selected S3 season without mutating S2 storage", async () => {
+  it("increments S3 creatures without mutating S2 storage", async () => {
     enableTestS3();
     const user = userEvent.setup();
     const s2Data = createDefaultData("s2");
     localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(s2Data));
 
     render(<App />);
-    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
-    await user.click(screen.getByRole("button", { name: "+1" }));
+    await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
 
     expect(localStorage.getItem(S2_STORAGE_KEY)).toBe(JSON.stringify(s2Data));
     const savedS3 = JSON.parse(localStorage.getItem(S3_STORAGE_KEY) ?? "null") as AppData;
-    expect(savedS3.creatures[0]).toMatchObject({ id: "s3-test-creature", currentEncounters: 1, totalEncounters: 1 });
+    expect(savedS3.creatures[0]).toMatchObject({ id: "s3-adventure-baomizai", currentEncounters: 1, totalEncounters: 1 });
   });
 
   it("exports the selected season file name", async () => {
@@ -119,11 +113,11 @@ describe("App", () => {
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "导出 JSON" }));
-    expect(link.download).toBe("s2-capture-counter-backup.json");
-
-    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
-    fireEvent.click(screen.getByRole("button", { name: "导出 JSON" }));
     expect(link.download).toBe("s3-capture-counter-backup.json");
+
+    await user.selectOptions(screen.getByLabelText("赛季"), "s2");
+    fireEvent.click(screen.getByRole("button", { name: "导出 JSON" }));
+    expect(link.download).toBe("s2-capture-counter-backup.json");
     expect(clickSpy).toHaveBeenCalledTimes(2);
   });
 
@@ -134,14 +128,14 @@ describe("App", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
-    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+    await user.selectOptions(screen.getByLabelText("赛季"), "s2");
     await user.click(screen.getByRole("button", { name: "展开多端同步" }));
     await user.type(screen.getByLabelText("GitHub Token"), "token-1");
     await user.click(screen.getByRole("button", { name: "上传本机数据" }));
 
     const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
-    expect(body.files["s3-capture-counter.json"]).toBeDefined();
-    expect(body.files["s2-capture-counter.json"]).toBeUndefined();
+    expect(body.files["s2-capture-counter.json"]).toBeDefined();
+    expect(body.files["s3-capture-counter.json"]).toBeUndefined();
   });
 
   it("ignores manual pull results after switching seasons", async () => {
@@ -162,15 +156,15 @@ describe("App", () => {
     await user.type(screen.getByLabelText("GitHub Token"), "token-1");
     await user.type(screen.getByLabelText("Gist ID"), "gist-1");
     await user.click(screen.getByRole("button", { name: "拉取云端数据" }));
-    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+    await user.selectOptions(screen.getByLabelText("赛季"), "s2");
 
-    resolvePull(new Response(JSON.stringify({ files: { "s2-capture-counter.json": { content: JSON.stringify(s2Cloud) } } }), { status: 200 }));
+    resolvePull(new Response(JSON.stringify({ files: { "s3-capture-counter.json": { content: JSON.stringify(s2Cloud) } } }), { status: 200 }));
     await act(async () => {});
 
-    expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
-    expect(screen.getByRole("listitem", { name: /S3 测试精灵/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /猴麦仔/ })).toBeInTheDocument();
     expect(screen.queryByRole("listitem", { name: /云端 S2/ })).not.toBeInTheDocument();
-    expect(localStorage.getItem(S3_STORAGE_KEY) ?? "").not.toContain("云端 S2");
+    expect(localStorage.getItem(S2_STORAGE_KEY) ?? "").not.toContain("云端 S2");
   });
 
   it("ignores imported data after switching seasons before the file finishes reading", async () => {
@@ -189,15 +183,15 @@ describe("App", () => {
 
     render(<App />);
     fireEvent.change(screen.getByLabelText("导入 JSON"), { target: { files: [file] } });
-    await user.selectOptions(screen.getByLabelText("赛季"), "s3");
+    await user.selectOptions(screen.getByLabelText("赛季"), "s2");
 
     resolveText(JSON.stringify(s2Import));
     await act(async () => {});
 
-    expect(screen.getByRole("heading", { name: "S3 捕捉计数器" })).toBeInTheDocument();
-    expect(screen.getByRole("listitem", { name: /S3 测试精灵/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "S2 捕捉计数器" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: /猴麦仔/ })).toBeInTheDocument();
     expect(screen.queryByRole("listitem", { name: /导入 S2/ })).not.toBeInTheDocument();
-    expect(localStorage.getItem(S3_STORAGE_KEY) ?? "").not.toContain("导入 S2");
+    expect(localStorage.getItem(S2_STORAGE_KEY) ?? "").not.toContain("导入 S2");
   });
 
   it("switches and persists the color theme", async () => {
@@ -300,7 +294,7 @@ describe("App", () => {
       settings: { sortMode: "default" },
     };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      files: { "s2-capture-counter.json": { content: JSON.stringify(cloudData) } },
+      files: { "s3-capture-counter.json": { content: JSON.stringify(cloudData) } },
     }), { status: 200 })));
 
     render(<App />);
@@ -326,9 +320,9 @@ describe("App", () => {
       ...localData,
       creatures: [{ ...localData.creatures[0], id: "cloud-creature", name: "云端精灵", currentEncounters: 1, totalEncounters: 1 }],
     };
-    localStorage.setItem("s2-capture-counter:data", JSON.stringify(localData));
+    localStorage.setItem("s3-capture-counter:data", JSON.stringify(localData));
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      files: { "s2-capture-counter.json": { content: JSON.stringify(cloudData) } },
+      files: { "s3-capture-counter.json": { content: JSON.stringify(cloudData) } },
     }), { status: 200 })));
 
     render(<App />);
@@ -347,7 +341,7 @@ describe("App", () => {
         return new Response(JSON.stringify({ id: "gist-1" }), { status: 200 });
       }
       return new Response(JSON.stringify({
-        files: { "s2-capture-counter.json": { content: JSON.stringify({
+        files: { "s3-capture-counter.json": { content: JSON.stringify({
           version: 3,
           creatures: [],
           records: [],
@@ -396,7 +390,7 @@ describe("App", () => {
       ...localData,
       creatures: [{ ...localData.creatures[0], id: "cloud-creature", name: "云端精灵", currentEncounters: 4, totalEncounters: 4 }],
     };
-    localStorage.setItem("s2-capture-counter:data", JSON.stringify(localData));
+    localStorage.setItem("s3-capture-counter:data", JSON.stringify(localData));
 
     let resolveStartupGet: (response: Response) => void = () => {};
     const startupGet = new Promise<Response>((resolve) => {
@@ -413,7 +407,7 @@ describe("App", () => {
     fetchMock.mockClear();
 
     resolveStartupGet(new Response(JSON.stringify({
-      files: { "s2-capture-counter.json": { content: JSON.stringify(cloudData) } },
+      files: { "s3-capture-counter.json": { content: JSON.stringify(cloudData) } },
     }), { status: 200 }));
     await act(async () => {});
 
@@ -425,7 +419,7 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][1]?.method).toBe("PATCH");
     const patchBody = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
-    const uploadedData = JSON.parse(patchBody.files["s2-capture-counter.json"].content) as AppData;
+    const uploadedData = JSON.parse(patchBody.files["s3-capture-counter.json"].content) as AppData;
     expect(uploadedData.creatures[0]).toMatchObject({ id: "local-creature", totalEncounters: 6 });
   });
 
@@ -445,9 +439,9 @@ describe("App", () => {
       ...localData,
       creatures: [{ ...localData.creatures[0], id: "cloud-creature", name: "云端精灵", currentEncounters: 1, totalEncounters: 1 }],
     };
-    localStorage.setItem("s2-capture-counter:data", JSON.stringify(localData));
+    localStorage.setItem("s3-capture-counter:data", JSON.stringify(localData));
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      files: { "s2-capture-counter.json": { content: JSON.stringify(cloudData) } },
+      files: { "s3-capture-counter.json": { content: JSON.stringify(cloudData) } },
     }), { status: 200 })));
 
     render(<App />);
@@ -464,8 +458,9 @@ describe("App", () => {
   it("separates creature names from the counter controls", () => {
     render(<App />);
 
-    const firstRow = screen.getByRole("listitem", { name: /猴麦仔/ });
-    expect(firstRow.querySelector(".creatureNamePane")?.textContent).toContain("猴麦仔");
+    const firstRow = screen.getByRole("listitem", { name: /苞米仔/ });
+    expect(firstRow.querySelector(".creatureNamePane")?.textContent).toContain("苞米仔");
+    expect(firstRow.querySelector(".creatureNamePane")?.textContent).toContain("奇遇");
     expect(firstRow.querySelector(".counterPane")?.textContent).toContain("本轮 0");
     expect(firstRow.querySelector(".counterPane")?.textContent).toContain("+1");
   });
@@ -489,8 +484,8 @@ describe("App", () => {
     await user.click(screen.getAllByRole("button", { name: "+1" })[1]);
 
     const rows = screen.getAllByRole("listitem");
-    expect(rows[0]).toHaveAccessibleName("烟花团");
-    expect(rows[1]).toHaveAccessibleName("猴麦仔");
+    expect(rows[0]).toHaveAccessibleName("守夜烛");
+    expect(rows[1]).toHaveAccessibleName("苞米仔");
   });
 
   it("adds a custom creature", async () => {
@@ -515,11 +510,11 @@ describe("App", () => {
 
     const editButtons = screen.getAllByRole("button", { name: "编辑" });
     await user.click(editButtons[0]);
-    expect(screen.getByLabelText("名称")).toHaveValue("猴麦仔");
+    expect(screen.getByLabelText("名称")).toHaveValue("苞米仔");
 
     await user.click(editButtons[1]);
 
-    expect(screen.getByLabelText("名称")).toHaveValue("烟花团");
+    expect(screen.getByLabelText("名称")).toHaveValue("守夜烛");
   });
 
   it("records acquisition with current round total and second-level time", async () => {
@@ -547,28 +542,28 @@ describe("App", () => {
     expect(screen.getByText("手动记录备注")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent("2026-05-22 08:09:10");
     expect(screen.getByText("本轮 2")).toBeInTheDocument();
-    expect(screen.getByText(/明细/)).toHaveTextContent("猴麦仔 1 / 烟花团 1");
-    expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
-    expect(screen.getByRole("listitem", { name: /烟花团/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
+    expect(screen.getByText(/明细/)).toHaveTextContent("苞米仔 1 / 守夜烛 1");
+    expect(screen.getByRole("listitem", { name: /苞米仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
+    expect(screen.getByRole("listitem", { name: /守夜烛/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
   });
 
   it("hides zero-count entries in acquisition breakdowns", () => {
     const record: AcquisitionRecord = {
       id: "record-1",
-      creatureId: "limited-shiny-houmaizai",
-      creatureName: "猴麦仔",
+      creatureId: "s3-adventure-baomizai",
+      creatureName: "苞米仔",
       date: "2026-05-22T08:09:10",
       acquisitionNumber: 1,
       roundEncounters: 4,
       roundBreakdown: [
-        { creatureId: "limited-shiny-houmaizai", creatureName: "猴麦仔", encounters: 3 },
-        { creatureId: "limited-shiny-yanhuatuan", creatureName: "烟花团", encounters: 1 },
-        { creatureId: "limited-shiny-jiayouhaikui", creatureName: "加油海葵", encounters: 0 },
+        { creatureId: "s3-adventure-baomizai", creatureName: "苞米仔", encounters: 3 },
+        { creatureId: "s3-adventure-shouyezhu", creatureName: "守夜烛", encounters: 1 },
+        { creatureId: "s3-adventure-shizikedou", creatureName: "十字蝌蚪", encounters: 0 },
         { creatureId: "other", creatureName: "其它", encounters: 0 },
       ],
       isOffTarget: false,
-      targetCreatureId: "limited-shiny-houmaizai",
-      targetCreatureName: "猴麦仔",
+      targetCreatureId: "s3-adventure-baomizai",
+      targetCreatureName: "苞米仔",
       targetRoundEncounters: 4,
       totalEncountersAtRecord: 4,
       location: "",
@@ -578,10 +573,10 @@ describe("App", () => {
     render(<HistoryList records={[record]} />);
 
     const history = screen.getByRole("heading", { name: "获得历史" }).closest("section");
-    expect(screen.getByText(/明细/)).toHaveTextContent("猴麦仔 3 / 烟花团 1");
+    expect(screen.getByText(/明细/)).toHaveTextContent("苞米仔 3 / 守夜烛 1");
     expect(history).not.toBeNull();
     if (!history) throw new Error("history section missing");
-    expect(history).not.toHaveTextContent("加油海葵 0");
+    expect(history).not.toHaveTextContent("十字蝌蚪 0");
     expect(history).not.toHaveTextContent("其它 0");
   });
 
@@ -590,7 +585,7 @@ describe("App", () => {
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "展开当前轮次" }));
-    await user.selectOptions(screen.getByLabelText("正在抓"), "limited-shiny-houmaizai");
+    await user.selectOptions(screen.getByLabelText("正在抓"), "s3-adventure-baomizai");
     await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
     await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
 
@@ -598,9 +593,9 @@ describe("App", () => {
     expect(screen.getByLabelText("获得类型")).toHaveValue("offTarget");
     await user.click(screen.getByRole("button", { name: "保存记录" }));
 
-    expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent("记录抓“猴麦仔”2只时歪出");
-    expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 2");
-    expect(screen.getByRole("listitem", { name: /烟花团/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
+    expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent(/记录抓.*苞米仔.*2只时歪出/);
+    expect(screen.getByRole("listitem", { name: /苞米仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 2");
+    expect(screen.getByRole("listitem", { name: /守夜烛/ }).querySelector(".counterPane")?.textContent).toContain("本轮 0");
   });
 
   it("keeps current round when manually choosing off-target for the same creature", async () => {
@@ -612,8 +607,8 @@ describe("App", () => {
     await user.selectOptions(screen.getByLabelText("获得类型"), "offTarget");
     await user.click(screen.getByRole("button", { name: "保存记录" }));
 
-    expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent("记录抓“猴麦仔”1只时歪出");
-    expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 1");
+    expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent(/记录抓.*苞米仔.*1只时歪出/);
+    expect(screen.getByRole("listitem", { name: /苞米仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 1");
   });
 
   it("records gifted captures without affecting own capture stats", async () => {
@@ -634,7 +629,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "获得历史" }).closest("section")).toHaveTextContent("还没有记录。");
     expect(screen.getByRole("heading", { name: "别人赠送记录" }).closest("section")).toHaveTextContent("朋友");
     expect(screen.getByRole("heading", { name: "别人赠送记录" }).closest("section")).toHaveTextContent("送的");
-    expect(screen.getByRole("listitem", { name: /猴麦仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 1");
+    expect(screen.getByRole("listitem", { name: /苞米仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 1");
     expect(screen.getByText("赠送记录").previousSibling).toHaveTextContent("1");
   });
 });

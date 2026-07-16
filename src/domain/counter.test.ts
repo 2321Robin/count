@@ -49,9 +49,9 @@ describe("counter domain", () => {
     expect(data.currentRound).toBeNull();
   });
 
-  it("does not expose S3 defaults before S3 is available", () => {
-    expect(getSeasonConfig("s3").isAvailable).toBe(false);
-    expect(getSeasonConfig("s3").defaultCreatures).toEqual([]);
+  it("shows S3 as selectable with default creatures populated", () => {
+    expect(getSeasonConfig("s3").isAvailable).toBe(true);
+    expect(getSeasonConfig("s3").defaultCreatures.length).toBe(20);
   });
 
   it("increments current and total encounters and joins the active round", () => {
