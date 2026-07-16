@@ -1,8 +1,8 @@
-import type { Creature } from "./types";
+import type { Creature, CreatureCategory } from "./types";
 
 export type SeasonId = "s2" | "s3";
 
-export type DefaultCreatureSeed = Pick<Creature, "id" | "name" | "targetCount" | "location" | "notes">;
+export type DefaultCreatureSeed = Pick<Creature, "id" | "name" | "targetCount" | "location" | "notes" | "category">;
 
 export type SeasonConfig = {
   id: SeasonId;
@@ -51,20 +51,43 @@ const s2: SeasonConfig = {
   isAvailable: true,
 };
 
+const s3DefaultCreatures: DefaultCreatureSeed[] = [
+  { id: "s3-adventure-baomizai", name: "苞米仔", targetCount: 80, location: "", notes: "", category: "奇遇" },
+  { id: "s3-adventure-shouyezhu", name: "守夜烛", targetCount: 80, location: "", notes: "", category: "奇遇" },
+  { id: "s3-adventure-shizikedou", name: "十字蝌蚪", targetCount: 80, location: "", notes: "", category: "奇遇" },
+  { id: "s3-adventure-lishu", name: "栗鼠", targetCount: 80, location: "", notes: "", category: "奇遇" },
+  { id: "s3-adventure-hudietaotao", name: "蝴蝶陶陶", targetCount: 80, location: "", notes: "", category: "奇遇" },
+  { id: "s3-adventure-daocaoren", name: "稻草人", targetCount: 80, location: "", notes: "", category: "奇遇" },
+  { id: "s3-adventure-miguohai", name: "蜜果骸", targetCount: 80, location: "", notes: "", category: "奇遇" },
+  { id: "s3-adventure-kabo", name: "卡波", targetCount: 80, location: "", notes: "", category: "奇遇" },
+  { id: "s3-normal-yibeier", name: "伊贝儿", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-keliji", name: "可立鸡", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-doudingyu", name: "豆丁鱼", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-haikuichong-original", name: "海盔虫（本来的样子）", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-haikuichong-worn", name: "海盔虫（磨损的样子）", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-dishu-dry", name: "地鼠（枯水期的样子）", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-dishu-water", name: "地鼠（储水时的样子）", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-xiaocaochong", name: "小草虫", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-xiaoyu", name: "小鹬", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-normal-banban", name: "斑斑", targetCount: 80, location: "", notes: "", category: "普通" },
+  { id: "s3-battlepass-zujianyuanjian", name: "足尖元件", targetCount: 80, location: "", notes: "", category: "战令" },
+  { id: "s3-battlepass-yaoyaoxiaozi", name: "咬咬小子", targetCount: 80, location: "", notes: "", category: "战令" },
+];
+
 const s3: SeasonConfig = {
   id: "s3",
   label: "S3",
   eyebrow: "Roco World S3",
   title: "S3 捕捉计数器",
-  description: "S3 精灵名单确认后启用；计数会从 0 独立开始。",
+  description: "按精灵记录遭遇次数、本轮进度和获得历史。",
   storageKey: "s3-capture-counter:data",
   syncFileName: "s3-capture-counter.json",
   exportFileName: "s3-capture-counter-backup.json",
-  defaultCreatures: [],
-  isAvailable: false,
+  defaultCreatures: s3DefaultCreatures,
+  isAvailable: true,
 };
 
-export const DEFAULT_SEASON_ID: SeasonId = "s2";
+export const DEFAULT_SEASON_ID: SeasonId = "s3";
 export const SEASON_IDS: SeasonId[] = ["s2", "s3"];
 export const SELECTED_SEASON_KEY = "s2-capture-counter:selected-season";
 export const seasons: Record<SeasonId, SeasonConfig> = { s2, s3 };

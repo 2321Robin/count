@@ -183,6 +183,7 @@ function migrateCreature(creature: Creature, defaultById: Map<string, Creature>)
     targetCount: defaultCreature.targetCount,
     location: defaultCreature.location,
     notes: defaultCreature.notes,
+    category: defaultCreature.category,
   };
 }
 

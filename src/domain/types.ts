@@ -7,6 +7,8 @@ export type AppData = {
   settings: AppSettings;
 };
 
+export type CreatureCategory = "奇遇" | "普通" | "战令";
+
 export type Creature = {
   id: string;
   name: string;
@@ -16,6 +18,7 @@ export type Creature = {
   location: string;
   notes: string;
   isDefault: boolean;
+  category?: CreatureCategory;
 };
 
 export type CurrentRound = {
