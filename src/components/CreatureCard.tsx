@@ -17,6 +17,7 @@ export function CreatureCard({ creature, onIncrement, onDecrement, onEdit, onRec
     <article className="card counterRow" role="listitem" aria-label={creature.name}>
       <div className="creatureNamePane">
         <h2>{creature.name}</h2>
+        {creature.category && <span className="categoryLabel">{creature.category}</span>}
       </div>
       <div className="counterPane">
         <div className="numbers">
