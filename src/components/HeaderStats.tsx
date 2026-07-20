@@ -10,6 +10,7 @@ export function HeaderStats({ stats }: Props) {
       <div><span>{stats.historicalTotal}</span><small>历史遭遇</small></div>
       <div><span>{stats.recordCount}</span><small>获得记录</small></div>
       <div><span>{stats.giftedRecordCount}</span><small>赠送记录</small></div>
+      <div><span>{stats.fairyTaleBookRecordCount}</span><small>童话绘本</small></div>
     </section>
   );
 }

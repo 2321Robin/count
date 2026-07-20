@@ -13,9 +13,11 @@ type Props = {
   onSetTarget: (id: string | null) => void;
   onStartNew: (ids: string[]) => void;
   onReset: () => void;
+  onRecordFairyTaleBook?: () => void;
+  isS3Season?: boolean;
 };
 
-export function CurrentRoundPanel({ data, onSetTargets, onSetTarget, onStartNew, onReset }: Props) {
+export function CurrentRoundPanel({ data, onSetTargets, onSetTarget, onStartNew, onReset, onRecordFairyTaleBook, isS3Season }: Props) {
   const activeIds = new Set(data.currentRound?.creatureIds ?? []);
   const targetCreatureId = data.currentRound?.targetCreatureId ?? "";
   const targetCreature = targetCreatureId ? data.creatures.find((creature) => creature.id === targetCreatureId) : null;
@@ -39,6 +41,7 @@ export function CurrentRoundPanel({ data, onSetTargets, onSetTarget, onStartNew,
         <div className="roundPanelActions">
           <strong className="roundTotal">本轮合计 {total}</strong>
           {targetCreature && <strong className="roundTarget">正在抓 {targetCreature.name}</strong>}
+          {isS3Season && onRecordFairyTaleBook && <button type="button" onClick={onRecordFairyTaleBook}>记录童话绘本</button>}
           <button type="button" className="ghost" aria-expanded={isOpen} aria-controls="current-round-details" onClick={() => setIsOpen((value) => !value)}>
             {isOpen ? "收起当前轮次" : "展开当前轮次"}
           </button>

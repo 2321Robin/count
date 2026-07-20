@@ -19,7 +19,7 @@ describe("import export", () => {
   it("exports formatted JSON", () => {
     const json = exportAppData(createDefaultData());
 
-    expect(JSON.parse(json).version).toBe(3);
+    expect(JSON.parse(json).version).toBe(4);
     expect(json).toContain("\n");
   });
 
@@ -61,8 +61,9 @@ describe("import export", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.data.version).toBe(3);
+      expect(result.data.version).toBe(4);
       expect(result.data.giftedRecords).toEqual([]);
+      expect(result.data.fairyTaleBookRecords).toEqual([]);
       expect(result.data.currentRound).toBeNull();
     }
   });

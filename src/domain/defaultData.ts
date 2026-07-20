@@ -7,7 +7,7 @@ import type { SeasonId } from "./seasons";
 export function createDefaultData(seasonId: SeasonId = DEFAULT_SEASON_ID): AppData {
   const season = getSeasonConfig(seasonId);
   return {
-    version: 3,
+    version: 4,
     creatures: season.defaultCreatures.map((creature) => ({
       ...creature,
       currentEncounters: 0,
@@ -16,6 +16,7 @@ export function createDefaultData(seasonId: SeasonId = DEFAULT_SEASON_ID): AppDa
     })),
     records: [],
     giftedRecords: [],
+    fairyTaleBookRecords: [],
     currentRound: null,
     settings: { sortMode: "default" },
   };

@@ -9,6 +9,7 @@ import {
   getCurrentRoundTotal,
   incrementEncounter,
   recordAcquisition,
+  recordFairyTaleBook,
   recordGiftedCapture,
   removeCreature,
   setCurrentRoundTarget,
@@ -22,7 +23,7 @@ describe("counter domain", () => {
     const data = createDefaultData("s2");
     const defaultNames = data.creatures.map((creature) => creature.name);
 
-    expect(data.version).toBe(3);
+    expect(data.version).toBe(4);
     expect(defaultNames).toEqual([
       "猴麦仔",
       "烟花团",
@@ -351,6 +352,83 @@ describe("counter domain", () => {
       historicalTotal: 2,
       recordCount: 1,
       giftedRecordCount: 1,
+      fairyTaleBookRecordCount: 0,
     });
+  });
+
+  it("records a fairy tale book entry without modifying current round data", () => {
+    const data = createDefaultData();
+    const baomizai = data.creatures.find((c) => c.id === "s3-adventure-baomizai")!;
+    const shouyezhu = data.creatures.find((c) => c.id === "s3-adventure-shouyezhu")!;
+    const lishu = data.creatures.find((c) => c.id === "s3-adventure-lishu")!;
+
+    const counted = incrementEncounter(incrementEncounter(data, baomizai.id), shouyezhu.id);
+    const roundBefore = counted.currentRound;
+    const currentBefore = counted.creatures.map((c) => ({ id: c.id, current: c.currentEncounters, total: c.totalEncounters }));
+
+    const next = recordFairyTaleBook(counted, {
+      date: "2026-07-20T12:00:00",
+      entries: [
+        { creatureId: baomizai.id, count: 3 },
+        { creatureId: shouyezhu.id, count: 2 },
+      ],
+      shinyCreatureIds: [baomizai.id],
+      notes: "第一本童话绘本",
+    });
+
+    expect(next.records).toHaveLength(0);
+    expect(next.fairyTaleBookRecords).toHaveLength(1);
+    expect(next.fairyTaleBookRecords[0]).toMatchObject({
+      date: "2026-07-20T12:00:00",
+      entries: [
+        { creatureId: baomizai.id, creatureName: baomizai.name, count: 3 },
+        { creatureId: shouyezhu.id, creatureName: shouyezhu.name, count: 2 },
+      ],
+      shinyCreatureIds: [baomizai.id],
+      notes: "第一本童话绘本",
+    });
+    expect(next.fairyTaleBookRecords[0].id).toMatch(/^fairytale-/);
+    expect(next.currentRound).toEqual(roundBefore);
+    next.creatures.forEach((c) => {
+      const before = currentBefore.find((b) => b.id === c.id)!;
+      expect(c.currentEncounters).toBe(before.current);
+      expect(c.totalEncounters).toBe(before.total);
+    });
+  });
+
+  it("prepends new fairy tale book records to the list", () => {
+    const data = createDefaultData();
+    const baomizai = data.creatures.find((c) => c.id === "s3-adventure-baomizai")!;
+
+    const first = recordFairyTaleBook(data, {
+      date: "2026-07-20T12:00:00",
+      entries: [{ creatureId: baomizai.id, count: 1 }],
+      shinyCreatureIds: [baomizai.id],
+      notes: "",
+    });
+    const second = recordFairyTaleBook(first, {
+      date: "2026-07-21T12:00:00",
+      entries: [{ creatureId: baomizai.id, count: 2 }],
+      shinyCreatureIds: [baomizai.id],
+      notes: "",
+    });
+
+    expect(second.fairyTaleBookRecords).toHaveLength(2);
+    expect(second.fairyTaleBookRecords[0].date).toBe("2026-07-21T12:00:00");
+    expect(second.fairyTaleBookRecords[1].date).toBe("2026-07-20T12:00:00");
+  });
+
+  it("includes fairy tale book record count in stats", () => {
+    const data = createDefaultData();
+    const baomizai = data.creatures.find((c) => c.id === "s3-adventure-baomizai")!;
+
+    const recorded = recordFairyTaleBook(data, {
+      date: "2026-07-20T12:00:00",
+      entries: [{ creatureId: baomizai.id, count: 1 }],
+      shinyCreatureIds: [baomizai.id],
+      notes: "",
+    });
+
+    expect(calculateStats(recorded).fairyTaleBookRecordCount).toBe(1);
   });
 });

@@ -570,7 +570,7 @@ describe("App", () => {
       notes: "",
     };
 
-    render(<HistoryList records={[record]} />);
+    render(<HistoryList records={[record]} fairyTaleBookRecords={[]} />);
 
     const history = screen.getByRole("heading", { name: "获得历史" }).closest("section");
     expect(screen.getByText(/明细/)).toHaveTextContent("苞米仔 3 / 守夜烛 1");

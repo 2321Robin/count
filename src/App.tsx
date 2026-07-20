@@ -3,12 +3,13 @@ import { CreatureEditor } from "./components/CreatureEditor";
 import { CreatureGrid } from "./components/CreatureGrid";
 import { CurrentRoundPanel } from "./components/CurrentRoundPanel";
 import { DataManager } from "./components/DataManager";
+import { FairyTaleBookDialog } from "./components/FairyTaleBookDialog";
 import { HeaderStats } from "./components/HeaderStats";
 import { GiftedHistoryList } from "./components/GiftedHistoryList";
 import { GiftedRecordDialog } from "./components/GiftedRecordDialog";
 import { HistoryList } from "./components/HistoryList";
 import { RecordDialog } from "./components/RecordDialog";
-import { addCreature, calculateStats, decrementEncounter, getCurrentRoundTarget, incrementEncounter, recordAcquisition, recordGiftedCapture, removeCreature, resetCurrentRoundCounts, setCurrentRoundTarget, setCurrentRoundTargets, startNewRound, updateCreature } from "./domain/counter";
+import { addCreature, calculateStats, decrementEncounter, getCurrentRoundTarget, incrementEncounter, recordAcquisition, recordFairyTaleBook, recordGiftedCapture, removeCreature, resetCurrentRoundCounts, setCurrentRoundTarget, setCurrentRoundTargets, startNewRound, updateCreature } from "./domain/counter";
 import { createDefaultData } from "./domain/defaultData";
 import { exportAppData, parseImportedData } from "./domain/importExport";
 import { DEFAULT_SEASON_ID, getAvailableSeasonIds, getSeasonConfig, isSeasonId, SELECTED_SEASON_KEY } from "./domain/seasons";
@@ -16,7 +17,7 @@ import type { SeasonId } from "./domain/seasons";
 import { loadAppData, saveAppData } from "./domain/storage";
 import { clearSyncConfig, loadSyncConfig, pullFromGist, pushToGist, saveSyncConfig, selectHigherTotalData } from "./domain/sync";
 import type { SyncConfig } from "./domain/sync";
-import type { AppData, Creature, CreatureInput, GiftedRecordInput, RecordInput } from "./domain/types";
+import type { AppData, Creature, CreatureInput, FairyTaleBookRecordInput, GiftedRecordInput, RecordInput } from "./domain/types";
 
 const THEME_KEY = "s2-capture-counter:theme";
 const LAST_SYNC_AT_KEY = "s2-capture-counter:last-sync-at";
@@ -46,6 +47,7 @@ export default function App() {
   const [editing, setEditing] = useState<Creature | null | "new">(null);
   const [recording, setRecording] = useState<Creature | null>(null);
   const [recordingGift, setRecordingGift] = useState<Creature | null>(null);
+  const [recordingFairyTaleBook, setRecordingFairyTaleBook] = useState(false);
   const [message, setMessage] = useState("");
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(() => localStorage.getItem(LAST_SYNC_AT_KEY));
   const [syncConfig, setSyncConfig] = useState<SyncConfig>(() => loadSyncConfig());
@@ -175,6 +177,7 @@ export default function App() {
     setEditing(null);
     setRecording(null);
     setRecordingGift(null);
+    setRecordingFairyTaleBook(false);
     setSyncBusy(false);
     setMessage("");
     setSeasonId(nextSeasonId);
@@ -196,6 +199,11 @@ export default function App() {
   function saveGiftedRecord(input: GiftedRecordInput) {
     apply(recordGiftedCapture(data, input));
     setRecordingGift(null);
+  }
+
+  function saveFairyTaleBookRecord(input: FairyTaleBookRecordInput) {
+    apply(recordFairyTaleBook(data, input));
+    setRecordingFairyTaleBook(false);
   }
 
   function openRecordDialog(creature: Creature) {
@@ -297,7 +305,7 @@ export default function App() {
   }
 
   function clearData() {
-    if (window.confirm(`确定清空 ${season.label} 的所有数据？此操作不会影响其它赛季，但不可撤销。`)) apply({ version: 3, creatures: [], records: [], giftedRecords: [], currentRound: null, settings: { sortMode: "default" } });
+    if (window.confirm(`确定清空 ${season.label} 的所有数据？此操作不会影响其它赛季，但不可撤销。`)) apply({ version: 4, creatures: [], records: [], giftedRecords: [], fairyTaleBookRecords: [], currentRound: null, settings: { sortMode: "default" } });
   }
 
   function resetData() {
@@ -337,11 +345,12 @@ export default function App() {
           <button type="button" onClick={() => setEditing("new")}>新增精灵</button>
         </div>
       </header>
-      <CurrentRoundPanel data={data} onSetTargets={(ids) => apply(setCurrentRoundTargets(data, ids))} onSetTarget={(id) => apply(setCurrentRoundTarget(data, id))} onStartNew={(ids) => apply(startNewRound(data, ids))} onReset={() => apply(resetCurrentRoundCounts(data))} />
+      <CurrentRoundPanel data={data} onSetTargets={(ids) => apply(setCurrentRoundTargets(data, ids))} onSetTarget={(id) => apply(setCurrentRoundTarget(data, id))} onStartNew={(ids) => apply(startNewRound(data, ids))} onReset={() => apply(resetCurrentRoundCounts(data))} onRecordFairyTaleBook={() => setRecordingFairyTaleBook(true)} isS3Season={seasonId === "s3"} />
       <HeaderStats stats={calculateStats(data)} />
       {editing && <CreatureEditor key={editing === "new" ? "new" : editing.id} creature={editing === "new" ? null : editing} onSave={saveCreature} onCancel={() => setEditing(null)} />}
       {recording && <div ref={recordDialogRef}><RecordDialog creature={recording} targetCreature={getCurrentRoundTarget(data)} onSave={saveRecord} onCancel={() => setRecording(null)} /></div>}
       {recordingGift && <div ref={giftedRecordDialogRef}><GiftedRecordDialog creatures={data.creatures} initialCreatureId={recordingGift.id} onSave={saveGiftedRecord} onCancel={() => setRecordingGift(null)} /></div>}
+      {recordingFairyTaleBook && <FairyTaleBookDialog onSave={saveFairyTaleBookRecord} onCancel={() => setRecordingFairyTaleBook(false)} />}
       <CreatureGrid
         creatures={data.creatures}
         onIncrement={(id) => apply(incrementEncounter(data, id))}
@@ -352,7 +361,7 @@ export default function App() {
         onRemove={removeCustomCreature}
       />
       <DataManager seasonLabel={season.label} message={message} lastSyncAt={lastSyncAt} syncConfig={syncConfig} syncBusy={syncBusy} onSaveSyncConfig={updateSyncConfig} onPushSync={pushSync} onPullSync={pullSync} onDisconnectSync={disconnectSync} onExport={exportData} onImport={importData} onClear={clearData} onReset={resetData} />
-      <HistoryList records={data.records} />
+      <HistoryList records={data.records} fairyTaleBookRecords={data.fairyTaleBookRecords} />
       <GiftedHistoryList records={data.giftedRecords} />
     </main>
   );

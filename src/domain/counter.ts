@@ -4,10 +4,12 @@ import type {
   AppStats,
   Creature,
   CreatureInput,
+  FairyTaleBookRecordInput,
   GiftedRecordInput,
   RecordInput,
   RoundEncounterSnapshot,
 } from "./types";
+import { FAIRY_TALE_BOOK_CREATURES } from "./seasons";
 
 function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -129,6 +131,23 @@ export function decrementEncounter(data: AppData, creatureId: string): AppData {
   return { ...nextData, currentRound: createRound(nextData, currentIds, undefined, Boolean(data.currentRound)) };
 }
 
+export function recordFairyTaleBook(data: AppData, input: FairyTaleBookRecordInput): AppData {
+  const nameById = new Map(FAIRY_TALE_BOOK_CREATURES.map((c) => [c.id, c.name]));
+  const record = {
+    id: createId("fairytale"),
+    date: input.date,
+    entries: input.entries.map((entry) => ({
+      creatureId: entry.creatureId,
+      creatureName: nameById.get(entry.creatureId) ?? entry.creatureId,
+      count: entry.count,
+    })),
+    shinyCreatureIds: input.shinyCreatureIds,
+    notes: input.notes,
+  };
+
+  return { ...data, fairyTaleBookRecords: [record, ...data.fairyTaleBookRecords] };
+}
+
 export function recordAcquisition(data: AppData, creatureId: string, input: RecordInput): AppData {
   const creature = data.creatures.find((item) => item.id === creatureId);
   if (!creature) return data;
@@ -232,5 +251,6 @@ export function calculateStats(data: AppData): AppStats {
     historicalTotal: data.creatures.reduce((sum, creature) => sum + creature.totalEncounters, 0),
     recordCount: data.records.length,
     giftedRecordCount: data.giftedRecords.length,
+    fairyTaleBookRecordCount: data.fairyTaleBookRecords.length,
   };
 }

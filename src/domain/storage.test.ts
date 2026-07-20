@@ -21,7 +21,7 @@ describe("storage", () => {
   it("loads defaults when storage is empty", () => {
     const data = loadAppData("s2");
 
-    expect(data.version).toBe(3);
+    expect(data.version).toBe(4);
     expect(data.creatures.length).toBeGreaterThan(0);
     expect(data.giftedRecords).toEqual([]);
   });
@@ -80,7 +80,7 @@ describe("storage", () => {
 
     const loaded = loadAppData("s2");
 
-    expect(loaded.version).toBe(3);
+    expect(loaded.version).toBe(4);
     expect(loaded.creatures[0]).toMatchObject({
       targetCount: 80,
       currentEncounters: 12,
@@ -88,6 +88,7 @@ describe("storage", () => {
       location: "",
       notes: "",
     });
+    expect(loaded.fairyTaleBookRecords).toEqual([]);
     expect(loaded.currentRound?.creatureIds).toEqual([oldData.creatures[0].id]);
     expect(loaded.giftedRecords).toEqual([]);
   });

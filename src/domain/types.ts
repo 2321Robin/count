@@ -1,8 +1,9 @@
 export type AppData = {
-  version: 3;
+  version: 4;
   creatures: Creature[];
   records: AcquisitionRecord[];
   giftedRecords: GiftedCaptureRecord[];
+  fairyTaleBookRecords: FairyTaleBookRecord[];
   currentRound: CurrentRound | null;
   settings: AppSettings;
 };
@@ -59,6 +60,27 @@ export type GiftedCaptureRecord = {
   notes: string;
 };
 
+export type FairyTaleBookCreatureEntry = {
+  creatureId: string;
+  creatureName: string;
+  count: number;
+};
+
+export type FairyTaleBookRecord = {
+  id: string;
+  date: string;
+  entries: FairyTaleBookCreatureEntry[];
+  shinyCreatureIds: string[];
+  notes: string;
+};
+
+export type FairyTaleBookRecordInput = {
+  date: string;
+  entries: { creatureId: string; count: number }[];
+  shinyCreatureIds: string[];
+  notes: string;
+};
+
 export type AppSettings = {
   sortMode: "default";
 };
@@ -90,4 +112,5 @@ export type AppStats = {
   historicalTotal: number;
   recordCount: number;
   giftedRecordCount: number;
+  fairyTaleBookRecordCount: number;
 };

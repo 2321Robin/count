@@ -7,6 +7,7 @@ import type {
   AppData,
   Creature,
   CurrentRound,
+  FairyTaleBookRecord,
   GiftedCaptureRecord,
   RoundEncounterSnapshot,
 } from "./types";
@@ -31,10 +32,11 @@ type RawV1AppData = {
   settings: AppData["settings"];
 };
 
-type RawVersionedAppData = Omit<AppData, "version" | "records" | "giftedRecords" | "currentRound"> & {
-  version: 2 | 3;
+type RawVersionedAppData = Omit<AppData, "version" | "records" | "giftedRecords" | "fairyTaleBookRecords" | "currentRound"> & {
+  version: 2 | 3 | 4;
   records: RawRecord[];
   giftedRecords: GiftedCaptureRecord[];
+  fairyTaleBookRecords?: FairyTaleBookRecord[];
   currentRound: RawCurrentRound | null;
 };
 
@@ -136,7 +138,7 @@ function isRawAppData(value: unknown): value is RawAppData {
   const data = value as Record<string, unknown>;
   const settings = data.settings as Record<string, unknown> | undefined;
   if (!(
-    (data.version === 1 || data.version === 2 || data.version === 3) &&
+    (data.version === 1 || data.version === 2 || data.version === 3 || data.version === 4) &&
     Array.isArray(data.creatures) &&
     data.creatures.every(isCreature) &&
     Array.isArray(data.records) &&
@@ -238,10 +240,11 @@ export function migrateAppData(value: unknown, seasonId: SeasonId = DEFAULT_SEAS
   const defaultById = new Map(createDefaultData(seasonId).creatures.map((creature) => [creature.id, creature]));
   const creatures = value.creatures.map((creature) => migrateCreature(creature, defaultById));
   const migrated: AppData = {
-    version: 3,
+    version: 4,
     creatures,
     records: migrateRecords(value.records),
     giftedRecords: value.version !== 1 ? migrateGiftedRecords(value.giftedRecords) : [],
+    fairyTaleBookRecords: (value.version === 4 ? (value as RawVersionedAppData).fairyTaleBookRecords : undefined) ?? [],
     currentRound: migrateCurrentRound(value, creatures),
     settings: value.settings,
   };

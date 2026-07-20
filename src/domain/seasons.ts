@@ -100,6 +100,27 @@ export function getSeasonConfig(seasonId: SeasonId): SeasonConfig {
   return seasons[seasonId];
 }
 
+export const FAIRY_TALE_BOOK_CREATURES: { id: string; name: string }[] = [
+  { id: "s3-adventure-baomizai", name: "苞米仔" },
+  { id: "s3-adventure-shouyezhu", name: "守夜烛" },
+  { id: "s3-adventure-shizikedou", name: "十字蝌蚪" },
+  { id: "s3-adventure-lishu", name: "栗鼠" },
+  { id: "s3-adventure-hudietaotao", name: "蝴蝶陶陶" },
+  { id: "s3-adventure-daocaoren", name: "稻草人" },
+  { id: "s3-adventure-miguohai", name: "蜜果骸" },
+  { id: "s3-adventure-kabo", name: "卡波" },
+  { id: "s3-normal-yibeier", name: "伊贝儿" },
+  { id: "s3-normal-keliji", name: "可立鸡" },
+  { id: "s3-normal-doudingyu", name: "豆丁鱼" },
+  { id: "s3-normal-haikuichong-original", name: "海盔虫（本来的样子）" },
+  { id: "s3-normal-haikuichong-worn", name: "海盔虫（磨损的样子）" },
+  { id: "s3-normal-dishu-dry", name: "地鼠（枯水期的样子）" },
+  { id: "s3-normal-dishu-water", name: "地鼠（储水时的样子）" },
+  { id: "s3-normal-xiaocaochong", name: "小草虫" },
+  { id: "s3-normal-xiaoyu", name: "小鹬" },
+  { id: "s3-normal-banban", name: "斑斑" },
+];
+
 export function getAvailableSeasonIds(): SeasonId[] {
   return SEASON_IDS.filter((seasonId) => seasons[seasonId].isAvailable);
 }
