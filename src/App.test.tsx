@@ -284,12 +284,13 @@ describe("App", () => {
     localStorage.setItem("s2-capture-counter:github-token", "token-1");
     localStorage.setItem("s2-capture-counter:gist-id", "gist-1");
     const cloudData: AppData = {
-      version: 3,
+      version: 4,
       creatures: [
         { id: "cloud-creature", name: "云端精灵", targetCount: 80, currentEncounters: 4, totalEncounters: 4, location: "", notes: "", isDefault: false },
       ],
       records: [],
       giftedRecords: [],
+      fairyTaleBookRecords: [],
       currentRound: null,
       settings: { sortMode: "default" },
     };
@@ -307,12 +308,13 @@ describe("App", () => {
     localStorage.setItem("s2-capture-counter:github-token", "token-1");
     localStorage.setItem("s2-capture-counter:gist-id", "gist-1");
     const localData: AppData = {
-      version: 3,
+      version: 4,
       creatures: [
         { id: "local-creature", name: "本机精灵", targetCount: 80, currentEncounters: 5, totalEncounters: 5, location: "", notes: "", isDefault: false },
       ],
       records: [],
       giftedRecords: [],
+      fairyTaleBookRecords: [],
       currentRound: null,
       settings: { sortMode: "default" },
     };
@@ -342,7 +344,7 @@ describe("App", () => {
       }
       return new Response(JSON.stringify({
         files: { "s3-capture-counter.json": { content: JSON.stringify({
-          version: 3,
+          version: 4,
           creatures: [],
           records: [],
           giftedRecords: [],
@@ -377,12 +379,13 @@ describe("App", () => {
     localStorage.setItem("s2-capture-counter:github-token", "token-1");
     localStorage.setItem("s2-capture-counter:gist-id", "gist-1");
     const localData: AppData = {
-      version: 3,
+      version: 4,
       creatures: [
         { id: "local-creature", name: "本机精灵", targetCount: 80, currentEncounters: 5, totalEncounters: 5, location: "", notes: "", isDefault: false },
       ],
       records: [],
       giftedRecords: [],
+      fairyTaleBookRecords: [],
       currentRound: null,
       settings: { sortMode: "default" },
     };
@@ -426,12 +429,13 @@ describe("App", () => {
   it("manual pull compares totals instead of overwriting higher local data", async () => {
     const user = userEvent.setup();
     const localData: AppData = {
-      version: 3,
+      version: 4,
       creatures: [
         { id: "local-creature", name: "本机精灵", targetCount: 80, currentEncounters: 7, totalEncounters: 7, location: "", notes: "", isDefault: false },
       ],
       records: [],
       giftedRecords: [],
+      fairyTaleBookRecords: [],
       currentRound: null,
       settings: { sortMode: "default" },
     };
