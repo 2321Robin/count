@@ -66,11 +66,13 @@ export function mergeAppData(localData: AppData, cloudData: AppData): AppData {
   };
 
   return {
-    ...localData, // currentRound、settings 取本地；version 保持 4
+    ...localData, // currentRound、settings 取本地；version 保持 5
     creatures: mergedCreatures,
     records: mergeById(localData.records, cloudData.records),
     giftedRecords: mergeById(localData.giftedRecords, cloudData.giftedRecords),
     fairyTaleBookRecords: mergeById(localData.fairyTaleBookRecords, cloudData.fairyTaleBookRecords),
+    // 全局修改 meta 取修改时间更晚的一侧；相同时保留本地。
+    meta: localData.meta.lastModifiedAt >= cloudData.meta.lastModifiedAt ? localData.meta : cloudData.meta,
   };
 }
 

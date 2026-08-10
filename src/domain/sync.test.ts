@@ -302,4 +302,22 @@ describe("sync", () => {
     expect(merged.settings).toEqual(local.settings);
     expect(merged.version).toBe(5);
   });
+
+  it("keeps the cloud meta when the cloud was modified later", () => {
+    const local = { ...createDefaultData("s2"), meta: { lastModifiedAt: "2026-08-01T00:00:00.000Z", lastModifiedBy: "computer" } };
+    const cloud = { ...createDefaultData("s2"), meta: { lastModifiedAt: "2026-08-02T00:00:00.000Z", lastModifiedBy: "phone" } };
+
+    const merged = mergeAppData(local, cloud);
+
+    expect(merged.meta).toEqual(cloud.meta);
+  });
+
+  it("keeps the local meta when the local modification is not older (equal or newer)", () => {
+    const local = { ...createDefaultData("s2"), meta: { lastModifiedAt: "2026-08-03T00:00:00.000Z", lastModifiedBy: "tablet" } };
+    const cloud = { ...createDefaultData("s2"), meta: { lastModifiedAt: "2026-08-02T00:00:00.000Z", lastModifiedBy: "phone" } };
+
+    const merged = mergeAppData(local, cloud);
+
+    expect(merged.meta).toEqual(local.meta);
+  });
 });
