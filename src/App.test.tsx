@@ -337,6 +337,36 @@ describe("App", () => {
     expect(screen.queryByRole("listitem", { name: /云端精灵/ })).not.toBeInTheDocument();
   });
 
+  it("warns when totals are equal but content differs", async () => {
+    sessionStorage.setItem("s2-capture-counter:github-token", "token-1");
+    localStorage.setItem("s2-capture-counter:gist-id", "gist-1");
+    const localData: AppData = {
+      version: 4,
+      creatures: [
+        { id: "local-creature", name: "本机精灵", targetCount: 80, currentEncounters: 5, totalEncounters: 5, location: "", notes: "", isDefault: false },
+      ],
+      records: [],
+      giftedRecords: [],
+      fairyTaleBookRecords: [],
+      currentRound: null,
+      settings: { sortMode: "default" },
+    };
+    const cloudData: AppData = {
+      ...localData,
+      creatures: [{ ...localData.creatures[0], id: "cloud-creature", name: "云端精灵", currentEncounters: 5, totalEncounters: 5 }],
+    };
+    localStorage.setItem("s3-capture-counter:data", JSON.stringify(localData));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      files: { "s3-capture-counter.json": { content: JSON.stringify(cloudData) } },
+    }), { status: 200 })));
+
+    render(<App />);
+
+    expect(await screen.findByRole("status")).toHaveTextContent("云端与本机总抓取数相同但内容不同，已保留本机数据；下次本机上传会自动合并两端记录。");
+    expect(screen.getByRole("listitem", { name: /本机精灵/ })).toBeInTheDocument();
+    expect(screen.queryByRole("listitem", { name: /云端精灵/ })).not.toBeInTheDocument();
+  });
+
   it("automatically uploads local changes after a short delay when sync is configured", async () => {
     vi.useFakeTimers();
     sessionStorage.setItem("s2-capture-counter:github-token", "token-1");
@@ -368,13 +398,14 @@ describe("App", () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][1]?.method).toBe("PATCH");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const patchCall = fetchMock.mock.calls[1];
+    expect(patchCall[1]?.method).toBe("PATCH");
     await act(async () => {});
     expect(screen.getByRole("status")).toHaveTextContent("本机数据已自动上传到云端。");
 
     await vi.advanceTimersByTimeAsync(800);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("uploads a local edit made before startup sync hydration keeps local data", async () => {
@@ -422,9 +453,10 @@ describe("App", () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][1]?.method).toBe("PATCH");
-    const patchBody = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const patchCall = fetchMock.mock.calls[1];
+    expect(patchCall[1]?.method).toBe("PATCH");
+    const patchBody = JSON.parse(patchCall[1]?.body as string);
     const uploadedData = JSON.parse(patchBody.files["s3-capture-counter.json"].content) as AppData;
     expect(uploadedData.creatures[0]).toMatchObject({ id: "local-creature", totalEncounters: 6 });
   });

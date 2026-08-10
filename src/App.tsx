@@ -241,6 +241,13 @@ export default function App() {
       return;
     }
 
+    // 等值但内容不同：不再静默，提示用户下次本机上传会自动合并两端记录。
+    if (selection.source === "equal" && JSON.stringify(selection.selected) !== JSON.stringify(cloudData)) {
+      setMessage("云端与本机总抓取数相同但内容不同，已保留本机数据；下次本机上传会自动合并两端记录。");
+      markSynced();
+      return;
+    }
+
     setMessage("本机数据总抓取数不低于云端，已保留本机数据。");
     markSynced();
   }

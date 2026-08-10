@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultData } from "./defaultData";
-import { clearSyncConfig, loadSyncConfig, pullFromGist, pushToGist, saveSyncConfig, selectHigherTotalData } from "./sync";
+import { clearSyncConfig, loadSyncConfig, mergeAppData, pullFromGist, pushToGist, saveSyncConfig, selectHigherTotalData } from "./sync";
 import type { AppData } from "./types";
 
 describe("sync", () => {
@@ -67,6 +67,72 @@ describe("sync", () => {
     const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
     expect(body.files["s3-capture-counter.json"].content).toBe(JSON.stringify(data, null, 2));
     expect(body.files["s2-capture-counter.json"]).toBeUndefined();
+  });
+
+  it("merges cloud data into the upload when the gist already exists", async () => {
+    const local = createDefaultData("s2");
+    const cloud: AppData = {
+      ...createDefaultData("s2"),
+      records: [{ id: "record-cloud-only", creatureId: local.creatures[0].id, creatureName: local.creatures[0].name, date: "2026-05-24T00:00:00", acquisitionNumber: 1, roundEncounters: 1, roundBreakdown: [], isOffTarget: false, targetCreatureId: local.creatures[0].id, targetCreatureName: local.creatures[0].name, targetRoundEncounters: 1, totalEncountersAtRecord: 1, location: "", notes: "" }],
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ files: { "s2-capture-counter.json": { content: JSON.stringify(cloud) } } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "gist" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await pushToGist(local, { token: "token", gistId: "gist" }, "s2");
+
+    expect(result).toEqual({ ok: true, gistId: "gist" });
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "https://api.github.com/gists/gist", expect.any(Object)); // 预拉取 GET（method 缺省即为 GET）
+    const patchCall = fetchMock.mock.calls[1];
+    expect(patchCall[0]).toBe("https://api.github.com/gists/gist");
+    expect(patchCall[1]?.method).toBe("PATCH");
+    const patchBody = JSON.parse(patchCall[1]?.body as string);
+    const uploaded = JSON.parse(patchBody.files["s2-capture-counter.json"].content) as AppData;
+    // 云端独有记录被合并进上传内容
+    expect(uploaded.records.map((record) => record.id)).toEqual(["record-cloud-only"]);
+  });
+
+  it("uploads local data unchanged when the cloud pre-fetch fails", async () => {
+    const data = createDefaultData("s2");
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "gist" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await pushToGist(data, { token: "token", gistId: "gist" }, "s2");
+
+    expect(result).toEqual({ ok: true, gistId: "gist" });
+    const patchBody = JSON.parse(fetchMock.mock.calls[1][1]?.body as string);
+    expect(JSON.parse(patchBody.files["s2-capture-counter.json"].content)).toEqual(data);
+  });
+
+  it("uploads local data unchanged when the cloud pre-fetch returns an error status", async () => {
+    const data = createDefaultData("s2");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 500 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "gist" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await pushToGist(data, { token: "token", gistId: "gist" }, "s2");
+
+    expect(result).toEqual({ ok: true, gistId: "gist" });
+    const patchBody = JSON.parse(fetchMock.mock.calls[1][1]?.body as string);
+    expect(JSON.parse(patchBody.files["s2-capture-counter.json"].content)).toEqual(data);
+  });
+
+  it("uploads local data unchanged when the gist has no valid season file", async () => {
+    const data = createDefaultData("s2");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ files: { "s3-capture-counter.json": { content: JSON.stringify(createDefaultData("s3")) } } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "gist" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await pushToGist(data, { token: "token", gistId: "gist" }, "s2");
+
+    expect(result).toEqual({ ok: true, gistId: "gist" });
+    const patchBody = JSON.parse(fetchMock.mock.calls[1][1]?.body as string);
+    expect(JSON.parse(patchBody.files["s2-capture-counter.json"].content)).toEqual(data);
   });
 
   it("pulls and migrates app data from a gist", async () => {
@@ -165,5 +231,75 @@ describe("sync", () => {
       localTotal: 1,
       cloudTotal: 1,
     });
+  });
+
+  it("merges creatures by taking the larger counts and keeping local fields", () => {
+    const local = createDefaultData("s2");
+    const cloud: AppData = {
+      ...createDefaultData("s2"),
+      creatures: [
+        { ...createDefaultData("s2").creatures[0], name: "云端改名", totalEncounters: 10, currentEncounters: 6 },
+        { id: "cloud-only", name: "云端独有", targetCount: 80, currentEncounters: 2, totalEncounters: 2, location: "", notes: "", isDefault: false },
+      ],
+    };
+
+    const merged = mergeAppData(local, cloud);
+
+    expect(merged.creatures[0]).toMatchObject({
+      id: local.creatures[0].id,
+      name: local.creatures[0].name, // 名称等非计数字段保留本地值
+      totalEncounters: 10,
+      currentEncounters: 6,
+    });
+    expect(merged.creatures[merged.creatures.length - 1]).toMatchObject({ id: "cloud-only", name: "云端独有" });
+    expect(merged.creatures.length).toBe(local.creatures.length + 1);
+    // 不变式：合并后 currentEncounters <= totalEncounters 依然成立
+    expect(merged.creatures.every((creature) => creature.currentEncounters <= creature.totalEncounters)).toBe(true);
+  });
+
+  it("merges records by id, keeping local order and appending cloud-only records", () => {
+    const baseRecord = {
+      creatureId: "limited-shiny-houmaizai",
+      creatureName: "猴麦仔",
+      date: "2026-05-24T00:00:00",
+      acquisitionNumber: 1,
+      roundEncounters: 1,
+      roundBreakdown: [] as { creatureId: string; creatureName: string; encounters: number }[],
+      isOffTarget: false,
+      targetCreatureId: "limited-shiny-houmaizai",
+      targetCreatureName: "猴麦仔",
+      targetRoundEncounters: 1,
+      totalEncountersAtRecord: 1,
+      location: "",
+      notes: "",
+    };
+    const localRecord = { ...baseRecord, id: "record-local" };
+    const cloudRecord = { ...baseRecord, id: "record-cloud" };
+    const localGift = { id: "gift-local", creatureId: "limited-shiny-houmaizai", creatureName: "猴麦仔", receivedAt: "2026-05-24T00:00:00", giftedBy: "A", notes: "" };
+    const cloudGift = { id: "gift-cloud", creatureId: "limited-shiny-houmaizai", creatureName: "猴麦仔", receivedAt: "2026-05-24T00:00:00", giftedBy: "B", notes: "" };
+    const localBook = { id: "book-local", date: "2026-05-24", entries: [] as { creatureId: string; creatureName: string; count: number }[], shinyCreatureIds: [] as string[], notes: "" };
+    const cloudBook = { id: "book-cloud", date: "2026-05-24", entries: [], shinyCreatureIds: [], notes: "" };
+    const local = { ...createDefaultData("s2"), records: [localRecord], giftedRecords: [localGift], fairyTaleBookRecords: [localBook] };
+    const cloud = { ...createDefaultData("s2"), records: [cloudRecord, localRecord], giftedRecords: [cloudGift], fairyTaleBookRecords: [cloudBook] };
+
+    const merged = mergeAppData(local, cloud);
+
+    // 本地顺序保持，云端独有记录追加到末尾，重复 id 只保留一份
+    expect(merged.records.map((record) => record.id)).toEqual(["record-local", "record-cloud"]);
+    expect(merged.giftedRecords.map((record) => record.id)).toEqual(["gift-local", "gift-cloud"]);
+    expect(merged.fairyTaleBookRecords.map((record) => record.id)).toEqual(["book-local", "book-cloud"]);
+  });
+
+  it("keeps local currentRound, settings, and version", () => {
+    const localRound = { creatureIds: ["limited-shiny-houmaizai"], targetCreatureId: null, updatedAt: "2026-05-24T00:00:00" };
+    const cloudRound = { creatureIds: ["other-id"], targetCreatureId: "limited-shiny-houmaizai", updatedAt: "2026-06-01T00:00:00" };
+    const local = { ...createDefaultData("s2"), currentRound: localRound };
+    const cloud = { ...createDefaultData("s2"), currentRound: cloudRound };
+
+    const merged = mergeAppData(local, cloud);
+
+    expect(merged.currentRound).toEqual(localRound);
+    expect(merged.settings).toEqual(local.settings);
+    expect(merged.version).toBe(4);
   });
 });

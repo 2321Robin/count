@@ -36,6 +36,44 @@ export function selectHigherTotalData(localData: AppData, cloudData: AppData): S
   return { selected: localData, source: "equal", localTotal, cloudTotal };
 }
 
+/**
+ * 按 id 合并本地与云端数据：两端共有的精灵计数取大，云端独有内容追加到本地末尾。
+ * 两端各自满足 currentEncounters <= totalEncounters，逐字段取最大值后不变式依然成立。
+ */
+export function mergeAppData(localData: AppData, cloudData: AppData): AppData {
+  // creatures：按 id 并集；两端都有的精灵 totalEncounters / currentEncounters 取最大值，
+  // 其余字段（name、targetCount、location、notes、isDefault、category）保留本地值。
+  const cloudById = new Map(cloudData.creatures.map((creature) => [creature.id, creature]));
+  const localIds = new Set(localData.creatures.map((creature) => creature.id));
+  const mergedCreatures = localData.creatures.map((localCreature) => {
+    const cloudCreature = cloudById.get(localCreature.id);
+    if (!cloudCreature) return localCreature;
+    return {
+      ...localCreature,
+      totalEncounters: Math.max(localCreature.totalEncounters, cloudCreature.totalEncounters),
+      currentEncounters: Math.max(localCreature.currentEncounters, cloudCreature.currentEncounters),
+    };
+  });
+  // 仅云端有的精灵追加到本地列表末尾，保持本地顺序。
+  for (const cloudCreature of cloudData.creatures) {
+    if (!localIds.has(cloudCreature.id)) mergedCreatures.push(cloudCreature);
+  }
+
+  // 记录类：按 id 去重并集，保持本地顺序，云端独有记录追加到末尾。
+  const mergeById = <T extends { id: string }>(localItems: T[], cloudItems: T[]): T[] => {
+    const localItemIds = new Set(localItems.map((item) => item.id));
+    return [...localItems, ...cloudItems.filter((item) => !localItemIds.has(item.id))];
+  };
+
+  return {
+    ...localData, // currentRound、settings 取本地；version 保持 4
+    creatures: mergedCreatures,
+    records: mergeById(localData.records, cloudData.records),
+    giftedRecords: mergeById(localData.giftedRecords, cloudData.giftedRecords),
+    fairyTaleBookRecords: mergeById(localData.fairyTaleBookRecords, cloudData.fairyTaleBookRecords),
+  };
+}
+
 export function loadSyncConfig(): SyncConfig {
   return {
     // Token 只保留在当前浏览器会话内，降低脚本注入与中间人窃取风险。
@@ -112,12 +150,26 @@ export async function pushToGist(data: AppData, config: SyncConfig, seasonId: Se
   if (!token) return { ok: false, error: "请先填写 GitHub Token。" };
   const { label, syncFileName } = getSeasonConfig(seasonId);
 
+  // gist 已存在时先预拉取云端当前赛季文件，按 id 合并后再上传，避免整文件覆盖丢失云端独有记录。
+  let uploadContent = JSON.stringify(data, null, 2);
+  if (gistId) {
+    try {
+      const cloudResponse = await fetch(`${GIST_API_URL}/${gistId}`, { headers: authHeaders(token) });
+      if (cloudResponse.ok) {
+        const cloudData = await parseGistData(cloudResponse, seasonId);
+        if (cloudData) uploadContent = JSON.stringify(mergeAppData(data, cloudData), null, 2);
+      }
+    } catch {
+      // 预拉取失败（网络错误、非 2xx、解析失败）静默降级为直接上传本地数据。
+    }
+  }
+
   const body = JSON.stringify({
     description: `${label} capture counter backup`,
     public: false,
     files: {
       [syncFileName]: {
-        content: JSON.stringify(data, null, 2),
+        content: uploadContent,
       },
     }
   });
