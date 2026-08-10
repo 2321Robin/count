@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AcquisitionRecord, FairyTaleBookRecord } from "../domain/types";
-import { formatRecordDate } from "../domain/dateTime";
+import { formatMetaStamp, formatRecordDate } from "../domain/dateTime";
 import { FairyTaleBookHistory } from "./FairyTaleBookHistory";
 
 type Props = {
@@ -40,6 +40,7 @@ export function HistoryList({ records, fairyTaleBookRecords }: Props) {
           <ul className="history">
             {records.map((record) => {
               const roundBreakdownText = formatVisibleRoundBreakdown(record);
+              const metaStamp = formatMetaStamp(record.updatedAt, record.updatedBy);
               return (
                 <li key={record.id}>
                   <strong>{record.creatureName}</strong>
@@ -53,6 +54,7 @@ export function HistoryList({ records, fairyTaleBookRecords }: Props) {
                   {!record.isOffTarget && roundBreakdownText && <span>明细 {roundBreakdownText}</span>}
                   <span>历史 {record.totalEncountersAtRecord}</span>
                   {record.notes && <em>{record.notes}</em>}
+                  {metaStamp && <span className="metaStamp">{metaStamp}</span>}
                 </li>
               );
             })}

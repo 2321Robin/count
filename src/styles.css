@@ -147,6 +147,7 @@ select { appearance: none; border: 1px solid var(--border); border-radius: 12px;
 .themePicker select, .seasonPicker select { min-width: 8.75rem; }
 .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.75rem; font-weight: 800; }
 .lastModified { margin-top: 0.5rem; font-size: 0.8rem; }
+.metaStamp { color: var(--muted); font-size: 0.8rem; }
 
 .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; overflow: hidden; margin-bottom: 16px; }
 .stats div { padding: 18px; background: var(--surface-strong); }

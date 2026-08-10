@@ -1,5 +1,5 @@
 import type { FairyTaleBookRecord } from "../domain/types";
-import { formatRecordDate } from "../domain/dateTime";
+import { formatMetaStamp, formatRecordDate } from "../domain/dateTime";
 import { FAIRY_TALE_BOOK_CREATURES } from "../domain/seasons";
 
 type Props = { records: FairyTaleBookRecord[] };
@@ -19,12 +19,14 @@ export function FairyTaleBookHistory({ records }: Props) {
             const shinyNames = record.shinyCreatureIds
               .map((id) => nameById.get(id) ?? id)
               .join("、");
+            const metaStamp = formatMetaStamp(record.updatedAt, record.updatedBy);
             return (
               <li key={record.id}>
                 <span>{formatRecordDate(record.date)}</span>
                 <span>{entriesText}</span>
                 <span>✨ 异色：{shinyNames}</span>
                 {record.notes && <em>{record.notes}</em>}
+                {metaStamp && <span className="metaStamp">{metaStamp}</span>}
               </li>
             );
           })}

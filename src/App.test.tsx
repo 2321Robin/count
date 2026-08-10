@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { HistoryList } from "./components/HistoryList";
+import { FairyTaleBookHistory } from "./components/FairyTaleBookHistory";
+import { GiftedHistoryList } from "./components/GiftedHistoryList";
 import { createDefaultData } from "./domain/defaultData";
 import { SELECTED_SEASON_KEY, seasons } from "./domain/seasons";
 import { S2_STORAGE_KEY, S3_STORAGE_KEY } from "./domain/storage";
@@ -644,6 +646,112 @@ describe("App", () => {
     if (!history) throw new Error("history section missing");
     expect(history).not.toHaveTextContent("十字蝌蚪 0");
     expect(history).not.toHaveTextContent("其它 0");
+  });
+
+  it("shows the recorded device and time on acquisition history entries", () => {
+    const record: AcquisitionRecord = {
+      id: "record-meta",
+      creatureId: "s3-adventure-baomizai",
+      creatureName: "苞米仔",
+      date: "2026-05-22T08:09:10",
+      acquisitionNumber: 1,
+      roundEncounters: 1,
+      roundBreakdown: [],
+      isOffTarget: false,
+      targetCreatureId: "s3-adventure-baomizai",
+      targetCreatureName: "苞米仔",
+      targetRoundEncounters: 1,
+      totalEncountersAtRecord: 1,
+      location: "",
+      notes: "",
+      updatedAt: "2026-08-10T06:32:18.000Z",
+      updatedBy: "phone",
+    };
+
+    render(<HistoryList records={[record]} fairyTaleBookRecords={[]} />);
+
+    const expectedTime = new Date("2026-08-10T06:32:18.000Z").toLocaleString("zh-CN", { hour12: false });
+    expect(screen.getByText(`手机 · ${expectedTime}`)).toBeInTheDocument();
+  });
+
+  it("does not render a meta stamp for records without timestamps", () => {
+    const record: AcquisitionRecord = {
+      id: "record-legacy",
+      creatureId: "s3-adventure-baomizai",
+      creatureName: "苞米仔",
+      date: "2026-05-22T08:09:10",
+      acquisitionNumber: 1,
+      roundEncounters: 1,
+      roundBreakdown: [],
+      isOffTarget: false,
+      targetCreatureId: "s3-adventure-baomizai",
+      targetCreatureName: "苞米仔",
+      targetRoundEncounters: 1,
+      totalEncountersAtRecord: 1,
+      location: "",
+      notes: "",
+    };
+
+    render(<HistoryList records={[record]} fairyTaleBookRecords={[]} />);
+
+    expect(document.querySelector(".metaStamp")).toBeNull();
+  });
+
+  it("shows an unknown device when the record has a timestamp but no device", () => {
+    const record: AcquisitionRecord = {
+      id: "record-no-device",
+      creatureId: "s3-adventure-baomizai",
+      creatureName: "苞米仔",
+      date: "2026-05-22T08:09:10",
+      acquisitionNumber: 1,
+      roundEncounters: 1,
+      roundBreakdown: [],
+      isOffTarget: false,
+      targetCreatureId: "s3-adventure-baomizai",
+      targetCreatureName: "苞米仔",
+      targetRoundEncounters: 1,
+      totalEncountersAtRecord: 1,
+      location: "",
+      notes: "",
+      updatedAt: "2026-08-10T06:32:18.000Z",
+    };
+
+    render(<HistoryList records={[record]} fairyTaleBookRecords={[]} />);
+
+    const stamp = document.querySelector(".metaStamp");
+    expect(stamp).not.toBeNull();
+    expect(stamp?.textContent).toContain("未知设备");
+  });
+
+  it("shows the recorded device on gifted history entries", () => {
+    render(<GiftedHistoryList records={[{
+      id: "gift-meta",
+      creatureId: "s3-adventure-baomizai",
+      creatureName: "苞米仔",
+      receivedAt: "2026-05-22T08:09:10",
+      giftedBy: "朋友",
+      notes: "",
+      updatedAt: "2026-08-10T06:32:18.000Z",
+      updatedBy: "computer",
+    }]} />);
+
+    const expectedTime = new Date("2026-08-10T06:32:18.000Z").toLocaleString("zh-CN", { hour12: false });
+    expect(screen.getByText(`电脑 · ${expectedTime}`)).toBeInTheDocument();
+  });
+
+  it("shows the recorded device on fairy tale book history entries", () => {
+    render(<FairyTaleBookHistory records={[{
+      id: "book-meta",
+      date: "2026-07-20T12:00:00",
+      entries: [{ creatureId: "s3-adventure-baomizai", creatureName: "苞米仔", count: 1 }],
+      shinyCreatureIds: [],
+      notes: "",
+      updatedAt: "2026-08-10T06:32:18.000Z",
+      updatedBy: "tablet",
+    }]} />);
+
+    const expectedTime = new Date("2026-08-10T06:32:18.000Z").toLocaleString("zh-CN", { hour12: false });
+    expect(screen.getByText(`平板 · ${expectedTime}`)).toBeInTheDocument();
   });
 
   it("marks a target and records off-target acquisitions without changing the round", async () => {
