@@ -1,4 +1,5 @@
 import { formatDateTimeInput, normalizeRecordDate } from "./dateTime";
+import { detectDeviceKind } from "./device";
 import type {
   AppData,
   AppStats,
@@ -143,6 +144,8 @@ export function recordFairyTaleBook(data: AppData, input: FairyTaleBookRecordInp
     })),
     shinyCreatureIds: input.shinyCreatureIds,
     notes: input.notes,
+    updatedAt: new Date().toISOString(),
+    updatedBy: detectDeviceKind(),
   };
 
   return { ...data, fairyTaleBookRecords: [record, ...data.fairyTaleBookRecords] };
@@ -173,6 +176,8 @@ export function recordAcquisition(data: AppData, creatureId: string, input: Reco
     totalEncountersAtRecord: creature.totalEncounters,
     location: input.location,
     notes: input.notes,
+    updatedAt: new Date().toISOString(),
+    updatedBy: detectDeviceKind(),
   };
 
   if (isOffTarget) return { ...data, records: [record, ...data.records] };
@@ -203,6 +208,8 @@ export function recordGiftedCapture(data: AppData, input: GiftedRecordInput): Ap
         receivedAt: normalizeRecordDate(input.date),
         giftedBy: input.giftedBy,
         notes: input.notes,
+        updatedAt: new Date().toISOString(),
+        updatedBy: detectDeviceKind(),
       },
       ...data.giftedRecords,
     ],

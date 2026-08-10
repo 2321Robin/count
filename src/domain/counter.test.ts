@@ -431,4 +431,49 @@ describe("counter domain", () => {
 
     expect(calculateStats(recorded).fairyTaleBookRecordCount).toBe(1);
   });
+
+  it("stamps acquisition records with the creation time and device", () => {
+    const data = createDefaultData();
+    const before = Date.now();
+    const next = recordAcquisition(data, data.creatures[0].id, { date: "2026-08-10", location: "", notes: "" });
+    const after = Date.now();
+    const record = next.records[0];
+
+    expect(typeof record.updatedAt).toBe("string");
+    expect(new Date(record.updatedAt!).getTime()).toBeGreaterThanOrEqual(before);
+    expect(new Date(record.updatedAt!).getTime()).toBeLessThanOrEqual(after);
+    expect(record.updatedBy).toBe("unknown"); // node 测试环境无 navigator，设备兜底为 unknown
+  });
+
+  it("stamps gifted capture records with the creation time and device", () => {
+    const data = createDefaultData();
+    const before = Date.now();
+    const next = recordGiftedCapture(data, { creatureId: data.creatures[0].id, date: "2026-08-10", giftedBy: "朋友", notes: "" });
+    const after = Date.now();
+    const record = next.giftedRecords[0];
+
+    expect(typeof record.updatedAt).toBe("string");
+    expect(new Date(record.updatedAt!).getTime()).toBeGreaterThanOrEqual(before);
+    expect(new Date(record.updatedAt!).getTime()).toBeLessThanOrEqual(after);
+    expect(record.updatedBy).toBe("unknown");
+  });
+
+  it("stamps fairy tale book records with the creation time and device", () => {
+    const data = createDefaultData();
+    const baomizai = data.creatures.find((c) => c.id === "s3-adventure-baomizai")!;
+    const before = Date.now();
+    const next = recordFairyTaleBook(data, {
+      date: "2026-08-10",
+      entries: [{ creatureId: baomizai.id, count: 1 }],
+      shinyCreatureIds: [baomizai.id],
+      notes: "",
+    });
+    const after = Date.now();
+    const record = next.fairyTaleBookRecords[0];
+
+    expect(typeof record.updatedAt).toBe("string");
+    expect(new Date(record.updatedAt!).getTime()).toBeGreaterThanOrEqual(before);
+    expect(new Date(record.updatedAt!).getTime()).toBeLessThanOrEqual(after);
+    expect(record.updatedBy).toBe("unknown");
+  });
 });
