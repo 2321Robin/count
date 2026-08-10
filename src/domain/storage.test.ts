@@ -19,11 +19,12 @@ describe("storage", () => {
   });
 
   it("loads defaults when storage is empty", () => {
-    const data = loadAppData("s2");
+    const result = loadAppData("s2");
 
-    expect(data.version).toBe(4);
-    expect(data.creatures.length).toBeGreaterThan(0);
-    expect(data.giftedRecords).toEqual([]);
+    expect(result.recovered).toBe(false);
+    expect(result.data.version).toBe(4);
+    expect(result.data.creatures.length).toBeGreaterThan(0);
+    expect(result.data.giftedRecords).toEqual([]);
   });
 
   it("saves and loads S2 app data from the existing key", () => {
@@ -34,7 +35,7 @@ describe("storage", () => {
 
     expect(localStorage.getItem(S2_STORAGE_KEY)).toBe(JSON.stringify(changed));
     expect(localStorage.getItem(S3_STORAGE_KEY)).toBeNull();
-    expect(loadAppData("s2").creatures[0].name).toBe("已保存");
+    expect(loadAppData("s2").data.creatures[0].name).toBe("已保存");
   });
 
   it("isolates S3 storage from S2 storage", () => {
@@ -44,8 +45,8 @@ describe("storage", () => {
     saveAppData("s2", s2Data);
     saveAppData("s3", s3Data);
 
-    expect(loadAppData("s2").creatures[0].name).toBe("猴麦仔");
-    expect(loadAppData("s3").creatures[0].name).toBe("S3 自定义");
+    expect(loadAppData("s2").data.creatures[0].name).toBe("猴麦仔");
+    expect(loadAppData("s3").data.creatures[0].name).toBe("S3 自定义");
     expect(localStorage.getItem(S2_STORAGE_KEY)).toBe(JSON.stringify(s2Data));
     expect(localStorage.getItem(S3_STORAGE_KEY)).toBe(JSON.stringify(s3Data));
   });
@@ -55,9 +56,9 @@ describe("storage", () => {
 
     const loaded = loadAppData("s3");
 
-    expect(loaded).toEqual(createDefaultData("s3"));
-    expect(loaded.creatures.length).toBe(20);
-    expect(loaded.creatures[0].name).toBe("苞米仔");
+    expect(loaded.data).toEqual(createDefaultData("s3"));
+    expect(loaded.data.creatures.length).toBe(20);
+    expect(loaded.data.creatures[0].name).toBe("苞米仔");
   });
 
   it("migrates v1 default creature targets while keeping counts", () => {
@@ -80,17 +81,17 @@ describe("storage", () => {
 
     const loaded = loadAppData("s2");
 
-    expect(loaded.version).toBe(4);
-    expect(loaded.creatures[0]).toMatchObject({
+    expect(loaded.data.version).toBe(4);
+    expect(loaded.data.creatures[0]).toMatchObject({
       targetCount: 80,
       currentEncounters: 12,
       totalEncounters: 34,
       location: "",
       notes: "",
     });
-    expect(loaded.fairyTaleBookRecords).toEqual([]);
-    expect(loaded.currentRound?.creatureIds).toEqual([oldData.creatures[0].id]);
-    expect(loaded.giftedRecords).toEqual([]);
+    expect(loaded.data.fairyTaleBookRecords).toEqual([]);
+    expect(loaded.data.currentRound?.creatureIds).toEqual([oldData.creatures[0].id]);
+    expect(loaded.data.giftedRecords).toEqual([]);
   });
 
   it("migrates old records with acquisition numbers, timestamps, and breakdowns", () => {
@@ -131,13 +132,13 @@ describe("storage", () => {
 
     const loaded = loadAppData("s2");
 
-    expect(loaded.records.map((record) => record.acquisitionNumber)).toEqual([2, 1, 1]);
-    expect(loaded.records.map((record) => record.date)).toEqual([
+    expect(loaded.data.records.map((record) => record.acquisitionNumber)).toEqual([2, 1, 1]);
+    expect(loaded.data.records.map((record) => record.date)).toEqual([
       "2026-05-24T00:00:00",
       "2026-05-23T00:00:00",
       "2026-05-22T00:00:00",
     ]);
-    expect(loaded.records[0].roundBreakdown).toEqual([
+    expect(loaded.data.records[0].roundBreakdown).toEqual([
       { creatureId: data.creatures[0].id, creatureName: data.creatures[0].name, encounters: 6 },
     ]);
   });
@@ -158,12 +159,37 @@ describe("storage", () => {
 
     const loaded = loadAppData("s2");
 
-    expect(loaded.giftedRecords[0].receivedAt).toBe("2026-05-24T00:00:00");
+    expect(loaded.data.giftedRecords[0].receivedAt).toBe("2026-05-24T00:00:00");
   });
 
   it("falls back to selected-season defaults for malformed storage", () => {
     localStorage.setItem(S3_STORAGE_KEY, "not json");
 
-    expect(loadAppData("s3")).toEqual(createDefaultData("s3"));
+    expect(loadAppData("s3").data).toEqual(createDefaultData("s3"));
+  });
+
+  it("backs up corrupt JSON and returns recovered defaults", () => {
+    localStorage.setItem(S2_STORAGE_KEY, "{corrupt");
+
+    const result = loadAppData("s2");
+
+    expect(result.recovered).toBe(true);
+    expect(result.data).toEqual(createDefaultData("s2"));
+    expect(localStorage.getItem(`${S2_STORAGE_KEY}-corrupt`)).toBe("{corrupt");
+  });
+
+  it("backs up unmigratable future data and returns recovered defaults", () => {
+    const future = { ...createDefaultData("s3"), version: 99 };
+    localStorage.setItem(S3_STORAGE_KEY, JSON.stringify(future));
+
+    const result = loadAppData("s3");
+
+    expect(result.recovered).toBe(true);
+    expect(result.data).toEqual(createDefaultData("s3"));
+    expect(localStorage.getItem(`${S3_STORAGE_KEY}-corrupt`)).toBe(JSON.stringify(future));
+  });
+
+  it("reports no recovery when storage is empty", () => {
+    expect(loadAppData("s2")).toEqual({ data: createDefaultData("s2"), recovered: false });
   });
 });

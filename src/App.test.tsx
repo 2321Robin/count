@@ -671,4 +671,25 @@ describe("App", () => {
     expect(screen.getByRole("listitem", { name: /苞米仔/ }).querySelector(".counterPane")?.textContent).toContain("本轮 1");
     expect(screen.getByText("赠送记录").previousSibling).toHaveTextContent("1");
   });
+
+  it("backs up corrupt storage and shows the recovery message", () => {
+    localStorage.setItem(S3_STORAGE_KEY, "not json");
+
+    render(<App />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("检测到本机数据损坏，已恢复默认数据；原始数据已备份到 s3-capture-counter:data-corrupt。");
+    expect(localStorage.getItem("s3-capture-counter:data-corrupt")).toBe("not json");
+  });
+
+  it("backs up corrupt storage when switching into a season and shows the recovery message", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(S3_STORAGE_KEY, JSON.stringify(createDefaultData("s3")));
+    localStorage.setItem(S2_STORAGE_KEY, "broken json");
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText("赛季"), "s2");
+
+    expect(screen.getByRole("status")).toHaveTextContent("检测到本机数据损坏，已恢复默认数据；原始数据已备份到 s2-capture-counter:data-corrupt。");
+    expect(localStorage.getItem("s2-capture-counter:data-corrupt")).toBe("broken json");
+  });
 });

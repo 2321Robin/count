@@ -42,7 +42,8 @@ function loadSelectedSeason(): SeasonId {
 export default function App() {
   const [seasonId, setSeasonId] = useState<SeasonId>(() => loadSelectedSeason());
   const season = getSeasonConfig(seasonId);
-  const [data, setData] = useState<AppData>(() => loadAppData(seasonId));
+  const [initialLoad] = useState(() => loadAppData(seasonId));
+  const [data, setData] = useState<AppData>(initialLoad.data);
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [editing, setEditing] = useState<Creature | null | "new">(null);
   const [recording, setRecording] = useState<Creature | null>(null);
@@ -163,6 +164,13 @@ export default function App() {
     setMessage("");
   }
 
+  // 挂载时若检测到本机数据损坏，提示用户已备份并恢复默认。
+  useEffect(() => {
+    if (initialLoad.recovered) {
+      setMessage("检测到本机数据损坏，已恢复默认数据；原始数据已备份到 " + getSeasonConfig(seasonId).storageKey + "-corrupt。");
+    }
+  }, []);
+
   function switchSeason(nextSeasonId: SeasonId) {
     const nextSeason = getSeasonConfig(nextSeasonId);
     if (!nextSeason.isAvailable || nextSeasonId === seasonId) return;
@@ -181,7 +189,11 @@ export default function App() {
     setSyncBusy(false);
     setMessage("");
     setSeasonId(nextSeasonId);
-    setData(loadAppData(nextSeasonId));
+    const result = loadAppData(nextSeasonId);
+    setData(result.data);
+    if (result.recovered) {
+      setMessage("检测到本机数据损坏，已恢复默认数据；原始数据已备份到 " + getSeasonConfig(nextSeasonId).storageKey + "-corrupt。");
+    }
     setHydrationRevision((revision) => revision + 1);
   }
 
