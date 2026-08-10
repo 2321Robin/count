@@ -522,6 +522,27 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "展开当前轮次" })).toBeInTheDocument();
   });
 
+  it("shows the last modified time and device in the hero after an edit", async () => {
+    const user = userEvent.setup();
+    vi.setSystemTime(new Date(2026, 7, 10, 14, 32, 18));
+    vi.stubGlobal("navigator", {
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      maxTouchPoints: 0,
+    });
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: "+1" })[0]);
+
+    const expectedTime = new Date(2026, 7, 10, 14, 32, 18).toLocaleString("zh-CN", { hour12: false });
+    expect(screen.getByText(`上次修改：电脑 · ${expectedTime}`)).toBeInTheDocument();
+  });
+
+  it("shows an unknown device for fresh default data", () => {
+    render(<App />);
+
+    expect(screen.getByText(/上次修改：未知设备 · /)).toBeInTheDocument();
+  });
+
   it("sorts creature rows by current round count from high to low", async () => {
     const user = userEvent.setup();
     render(<App />);

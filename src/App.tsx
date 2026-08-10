@@ -11,6 +11,8 @@ import { HistoryList } from "./components/HistoryList";
 import { RecordDialog } from "./components/RecordDialog";
 import { addCreature, calculateStats, decrementEncounter, getCurrentRoundTarget, incrementEncounter, recordAcquisition, recordFairyTaleBook, recordGiftedCapture, removeCreature, resetCurrentRoundCounts, setCurrentRoundTarget, setCurrentRoundTargets, startNewRound, updateCreature } from "./domain/counter";
 import { createDefaultData } from "./domain/defaultData";
+import { formatMetaStamp } from "./domain/dateTime";
+import { detectDeviceKind } from "./domain/device";
 import { exportAppData, parseImportedData } from "./domain/importExport";
 import { DEFAULT_SEASON_ID, getAvailableSeasonIds, getSeasonConfig, isSeasonId, SELECTED_SEASON_KEY } from "./domain/seasons";
 import type { SeasonId } from "./domain/seasons";
@@ -160,7 +162,9 @@ export default function App() {
   }, [data, syncConfig, hydrationRevision, seasonId]);
 
   function apply(next: AppData) {
-    setData(next);
+    // 所有用户修改（+1/-1、记录、编辑、导入、清空、重置）统一在此打点；
+    // 拉取云端/水合/切赛季走 setData，不经过这里，因此不会覆盖云端或本地已有的 meta。
+    setData({ ...next, meta: { lastModifiedAt: new Date().toISOString(), lastModifiedBy: detectDeviceKind() } });
     setMessage("");
   }
 
@@ -342,6 +346,7 @@ export default function App() {
           <p className="eyebrow">{season.eyebrow}</p>
           <h1>{season.title}</h1>
           <p>{season.description}</p>
+          <p className="lastModified">上次修改：{formatMetaStamp(data.meta.lastModifiedAt, data.meta.lastModifiedBy)}</p>
         </div>
         <div className="heroActions">
           <label className="seasonPicker">赛季
