@@ -216,6 +216,6 @@ describe("storage", () => {
   });
 
   it("reports no recovery when storage is empty", () => {
-    expect(loadAppData("s2")).toEqual({ data: createDefaultData("s2"), recovered: false });
+    expect(loadAppData("s2")).toEqual({ data: { ...createDefaultData("s2"), meta: expect.objectContaining({ lastModifiedBy: "unknown" }) }, recovered: false });
   });
 });
