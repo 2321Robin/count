@@ -324,7 +324,7 @@ export default function App() {
   }
 
   function clearData() {
-    if (window.confirm(`确定清空 ${season.label} 的所有数据？此操作不会影响其它赛季，但不可撤销。`)) apply({ version: 4, creatures: [], records: [], giftedRecords: [], fairyTaleBookRecords: [], currentRound: null, settings: { sortMode: "default" } });
+    if (window.confirm(`确定清空 ${season.label} 的所有数据？此操作不会影响其它赛季，但不可撤销。`)) apply({ version: 5, creatures: [], records: [], giftedRecords: [], fairyTaleBookRecords: [], currentRound: null, settings: { sortMode: "default" }, meta: { lastModifiedAt: new Date().toISOString(), lastModifiedBy: "unknown" } });
   }
 
   function resetData() {

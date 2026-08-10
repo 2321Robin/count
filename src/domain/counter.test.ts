@@ -23,7 +23,7 @@ describe("counter domain", () => {
     const data = createDefaultData("s2");
     const defaultNames = data.creatures.map((creature) => creature.name);
 
-    expect(data.version).toBe(4);
+    expect(data.version).toBe(5);
     expect(defaultNames).toEqual([
       "猴麦仔",
       "烟花团",

@@ -147,7 +147,7 @@ describe("sync", () => {
     const result = await pullFromGist({ token: "token", gistId: "gist" }, "s2");
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data?.version).toBe(4);
+    if (result.ok) expect(result.data?.version).toBe(5);
     expect(fetchMock).toHaveBeenCalledWith("https://api.github.com/gists/gist", expect.any(Object));
   });
 
@@ -300,6 +300,6 @@ describe("sync", () => {
 
     expect(merged.currentRound).toEqual(localRound);
     expect(merged.settings).toEqual(local.settings);
-    expect(merged.version).toBe(4);
+    expect(merged.version).toBe(5);
   });
 });

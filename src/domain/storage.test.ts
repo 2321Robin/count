@@ -22,7 +22,7 @@ describe("storage", () => {
     const result = loadAppData("s2");
 
     expect(result.recovered).toBe(false);
-    expect(result.data.version).toBe(4);
+    expect(result.data.version).toBe(5);
     expect(result.data.creatures.length).toBeGreaterThan(0);
     expect(result.data.giftedRecords).toEqual([]);
   });
@@ -56,7 +56,7 @@ describe("storage", () => {
 
     const loaded = loadAppData("s3");
 
-    expect(loaded.data).toEqual(createDefaultData("s3"));
+    expect(loaded.data).toEqual({ ...createDefaultData("s3"), meta: expect.objectContaining({ lastModifiedBy: "unknown" }) });
     expect(loaded.data.creatures.length).toBe(20);
     expect(loaded.data.creatures[0].name).toBe("苞米仔");
   });
@@ -81,7 +81,7 @@ describe("storage", () => {
 
     const loaded = loadAppData("s2");
 
-    expect(loaded.data.version).toBe(4);
+    expect(loaded.data.version).toBe(5);
     expect(loaded.data.creatures[0]).toMatchObject({
       targetCount: 80,
       currentEncounters: 12,
@@ -165,7 +165,7 @@ describe("storage", () => {
   it("falls back to selected-season defaults for malformed storage", () => {
     localStorage.setItem(S3_STORAGE_KEY, "not json");
 
-    expect(loadAppData("s3").data).toEqual(createDefaultData("s3"));
+    expect(loadAppData("s3").data).toEqual({ ...createDefaultData("s3"), meta: expect.objectContaining({ lastModifiedBy: "unknown" }) });
   });
 
   it("backs up corrupt JSON and returns recovered defaults", () => {
@@ -174,7 +174,7 @@ describe("storage", () => {
     const result = loadAppData("s2");
 
     expect(result.recovered).toBe(true);
-    expect(result.data).toEqual(createDefaultData("s2"));
+    expect(result.data).toEqual({ ...createDefaultData("s2"), meta: expect.objectContaining({ lastModifiedBy: "unknown" }) });
     expect(localStorage.getItem(`${S2_STORAGE_KEY}-corrupt`)).toBe("{corrupt");
   });
 
@@ -185,8 +185,34 @@ describe("storage", () => {
     const result = loadAppData("s3");
 
     expect(result.recovered).toBe(true);
-    expect(result.data).toEqual(createDefaultData("s3"));
+    expect(result.data).toEqual({ ...createDefaultData("s3"), meta: expect.objectContaining({ lastModifiedBy: "unknown" }) });
     expect(localStorage.getItem(`${S3_STORAGE_KEY}-corrupt`)).toBe(JSON.stringify(future));
+  });
+
+  it("migrates v4 data by adding a fallback meta stamp", () => {
+    // 手工构造 v4 数据：createDefaultData 已是 v5，用 JSON 往返降级
+    const v4 = JSON.parse(JSON.stringify({ ...createDefaultData("s2"), version: 4 }));
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(v4));
+
+    const result = loadAppData("s2");
+
+    expect(result.recovered).toBe(false);
+    expect(result.data.version).toBe(5);
+    expect(result.data.meta.lastModifiedBy).toBe("unknown");
+    expect(typeof result.data.meta.lastModifiedAt).toBe("string");
+  });
+
+  it("backs up a fallback meta for v5 data missing meta", () => {
+    const v5NoMeta = JSON.parse(JSON.stringify(createDefaultData("s2")));
+    delete v5NoMeta.meta;
+    localStorage.setItem(S2_STORAGE_KEY, JSON.stringify(v5NoMeta));
+
+    const result = loadAppData("s2");
+
+    expect(result.recovered).toBe(false);
+    expect(result.data.version).toBe(5);
+    expect(result.data.meta.lastModifiedBy).toBe("unknown");
+    expect(typeof result.data.meta.lastModifiedAt).toBe("string");
   });
 
   it("reports no recovery when storage is empty", () => {

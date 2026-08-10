@@ -1,11 +1,14 @@
+import type { DeviceKind } from "./device";
+
 export type AppData = {
-  version: 4;
+  version: 5;
   creatures: Creature[];
   records: AcquisitionRecord[];
   giftedRecords: GiftedCaptureRecord[];
   fairyTaleBookRecords: FairyTaleBookRecord[];
   currentRound: CurrentRound | null;
   settings: AppSettings;
+  meta: { lastModifiedAt: string; lastModifiedBy: DeviceKind };
 };
 
 export type CreatureCategory = "奇遇" | "普通" | "战令";
@@ -49,6 +52,8 @@ export type AcquisitionRecord = {
   totalEncountersAtRecord: number;
   location: string;
   notes: string;
+  updatedAt?: string;
+  updatedBy?: DeviceKind;
 };
 
 export type GiftedCaptureRecord = {
@@ -58,6 +63,8 @@ export type GiftedCaptureRecord = {
   receivedAt: string;
   giftedBy: string;
   notes: string;
+  updatedAt?: string;
+  updatedBy?: DeviceKind;
 };
 
 export type FairyTaleBookCreatureEntry = {
@@ -72,6 +79,8 @@ export type FairyTaleBookRecord = {
   entries: FairyTaleBookCreatureEntry[];
   shinyCreatureIds: string[];
   notes: string;
+  updatedAt?: string;
+  updatedBy?: DeviceKind;
 };
 
 export type FairyTaleBookRecordInput = {

@@ -19,7 +19,7 @@ describe("import export", () => {
   it("exports formatted JSON", () => {
     const json = exportAppData(createDefaultData());
 
-    expect(JSON.parse(json).version).toBe(4);
+    expect(JSON.parse(json).version).toBe(5);
     expect(json).toContain("\n");
   });
 
@@ -36,7 +36,7 @@ describe("import export", () => {
     const result = parseImportedData(JSON.stringify(data), "s3");
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data).toEqual(createDefaultData("s3"));
+    if (result.ok) expect(result.data).toEqual({ ...createDefaultData("s3"), meta: expect.objectContaining({ lastModifiedBy: "unknown" }) });
   });
 
   it("does not repair imported S2 default metadata while importing into S3", () => {
@@ -61,7 +61,7 @@ describe("import export", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.data.version).toBe(4);
+      expect(result.data.version).toBe(5);
       expect(result.data.giftedRecords).toEqual([]);
       expect(result.data.fairyTaleBookRecords).toEqual([]);
       expect(result.data.currentRound).toBeNull();

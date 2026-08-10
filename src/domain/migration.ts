@@ -1,5 +1,6 @@
 import { createDefaultData } from "./defaultData";
 import { formatDateTimeInput, normalizeRecordDate } from "./dateTime";
+import type { DeviceKind } from "./device";
 import { DEFAULT_SEASON_ID } from "./seasons";
 import type { SeasonId } from "./seasons";
 import type {
@@ -32,12 +33,13 @@ type RawV1AppData = {
   settings: AppData["settings"];
 };
 
-type RawVersionedAppData = Omit<AppData, "version" | "records" | "giftedRecords" | "fairyTaleBookRecords" | "currentRound"> & {
-  version: 2 | 3 | 4;
+type RawVersionedAppData = Omit<AppData, "version" | "records" | "giftedRecords" | "fairyTaleBookRecords" | "currentRound" | "meta"> & {
+  version: 2 | 3 | 4 | 5;
   records: RawRecord[];
   giftedRecords: GiftedCaptureRecord[];
   fairyTaleBookRecords?: FairyTaleBookRecord[];
   currentRound: RawCurrentRound | null;
+  meta?: { lastModifiedAt: string; lastModifiedBy: DeviceKind };
 };
 
 type RawAppData = RawV1AppData | RawVersionedAppData;
@@ -138,7 +140,7 @@ function isRawAppData(value: unknown): value is RawAppData {
   const data = value as Record<string, unknown>;
   const settings = data.settings as Record<string, unknown> | undefined;
   if (!(
-    (data.version === 1 || data.version === 2 || data.version === 3 || data.version === 4) &&
+    (data.version === 1 || data.version === 2 || data.version === 3 || data.version === 4 || data.version === 5) &&
     Array.isArray(data.creatures) &&
     data.creatures.every(isCreature) &&
     Array.isArray(data.records) &&
@@ -240,13 +242,15 @@ export function migrateAppData(value: unknown, seasonId: SeasonId = DEFAULT_SEAS
   const defaultById = new Map(createDefaultData(seasonId).creatures.map((creature) => [creature.id, creature]));
   const creatures = value.creatures.map((creature) => migrateCreature(creature, defaultById));
   const migrated: AppData = {
-    version: 4,
+    version: 5,
     creatures,
     records: migrateRecords(value.records),
     giftedRecords: value.version !== 1 ? migrateGiftedRecords(value.giftedRecords) : [],
-    fairyTaleBookRecords: (value.version === 4 ? (value as RawVersionedAppData).fairyTaleBookRecords : undefined) ?? [],
+    fairyTaleBookRecords: (value.version === 4 || value.version === 5 ? (value as RawVersionedAppData).fairyTaleBookRecords : undefined) ?? [],
     currentRound: migrateCurrentRound(value, creatures),
     settings: value.settings,
+    // 旧数据无法追溯修改时间/设备，兜底为升级时刻 + unknown；v5 数据缺 meta 时同样兜底。
+    meta: (value as RawVersionedAppData).meta ?? { lastModifiedAt: new Date().toISOString(), lastModifiedBy: "unknown" },
   };
 
   return migrated;
