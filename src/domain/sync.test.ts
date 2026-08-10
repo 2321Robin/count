@@ -7,13 +7,21 @@ import type { AppData } from "./types";
 describe("sync", () => {
   beforeEach(() => {
     const storage = new Map<string, string>();
+    const session = new Map<string, string>();
     vi.stubGlobal("localStorage", {
       clear: () => storage.clear(),
       getItem: (key: string) => storage.get(key) ?? null,
       removeItem: (key: string) => storage.delete(key),
       setItem: (key: string, value: string) => storage.set(key, value),
     });
+    vi.stubGlobal("sessionStorage", {
+      clear: () => session.clear(),
+      getItem: (key: string) => session.get(key) ?? null,
+      removeItem: (key: string) => session.delete(key),
+      setItem: (key: string, value: string) => session.set(key, value),
+    });
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it("saves and clears sync config separately from app data", () => {
@@ -23,6 +31,19 @@ describe("sync", () => {
 
     clearSyncConfig();
     expect(loadSyncConfig()).toEqual({ token: "", gistId: "" });
+  });
+
+  it("stores the token in sessionStorage and the gist id in localStorage", () => {
+    saveSyncConfig({ token: "token-1", gistId: "gist-1" });
+
+    expect(sessionStorage.getItem("s2-capture-counter:github-token")).toBe("token-1");
+    expect(localStorage.getItem("s2-capture-counter:github-token")).toBeNull();
+    expect(localStorage.getItem("s2-capture-counter:gist-id")).toBe("gist-1");
+    expect(sessionStorage.getItem("s2-capture-counter:gist-id")).toBeNull();
+
+    clearSyncConfig();
+    expect(sessionStorage.getItem("s2-capture-counter:github-token")).toBeNull();
+    expect(localStorage.getItem("s2-capture-counter:gist-id")).toBeNull();
   });
 
   it("pushes app data to a new gist", async () => {

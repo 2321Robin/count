@@ -17,7 +17,10 @@ function resetTestS3() {
 }
 
 describe("App", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
   afterEach(() => {
     cleanup();
     resetTestS3();
@@ -225,7 +228,7 @@ describe("App", () => {
     await user.type(screen.getByLabelText("Gist ID"), "gist-1");
     await user.click(screen.getByRole("button", { name: "保存同步配置" }));
 
-    expect(localStorage.getItem("s2-capture-counter:github-token")).toBe("token-1");
+    expect(sessionStorage.getItem("s2-capture-counter:github-token")).toBe("token-1");
     expect(localStorage.getItem("s2-capture-counter:gist-id")).toBe("gist-1");
     expect(screen.getByText("同步配置已保存。本机离线数据仍会继续保存。")).toBeInTheDocument();
   });
@@ -281,7 +284,7 @@ describe("App", () => {
   });
 
   it("checks saved sync on startup and applies cloud data with a higher total", async () => {
-    localStorage.setItem("s2-capture-counter:github-token", "token-1");
+    sessionStorage.setItem("s2-capture-counter:github-token", "token-1");
     localStorage.setItem("s2-capture-counter:gist-id", "gist-1");
     const cloudData: AppData = {
       version: 4,
@@ -305,7 +308,7 @@ describe("App", () => {
   });
 
   it("checks saved sync on startup and keeps local data when local total is not lower", async () => {
-    localStorage.setItem("s2-capture-counter:github-token", "token-1");
+    sessionStorage.setItem("s2-capture-counter:github-token", "token-1");
     localStorage.setItem("s2-capture-counter:gist-id", "gist-1");
     const localData: AppData = {
       version: 4,
@@ -336,7 +339,7 @@ describe("App", () => {
 
   it("automatically uploads local changes after a short delay when sync is configured", async () => {
     vi.useFakeTimers();
-    localStorage.setItem("s2-capture-counter:github-token", "token-1");
+    sessionStorage.setItem("s2-capture-counter:github-token", "token-1");
     localStorage.setItem("s2-capture-counter:gist-id", "gist-1");
     const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
       if (init?.method === "PATCH") {
@@ -376,7 +379,7 @@ describe("App", () => {
 
   it("uploads a local edit made before startup sync hydration keeps local data", async () => {
     vi.useFakeTimers();
-    localStorage.setItem("s2-capture-counter:github-token", "token-1");
+    sessionStorage.setItem("s2-capture-counter:github-token", "token-1");
     localStorage.setItem("s2-capture-counter:gist-id", "gist-1");
     const localData: AppData = {
       version: 4,

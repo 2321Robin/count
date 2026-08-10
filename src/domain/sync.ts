@@ -38,7 +38,8 @@ export function selectHigherTotalData(localData: AppData, cloudData: AppData): S
 
 export function loadSyncConfig(): SyncConfig {
   return {
-    token: localStorage.getItem(TOKEN_STORAGE_KEY) ?? "",
+    // Token 只保留在当前浏览器会话内，降低脚本注入与中间人窃取风险。
+    token: sessionStorage.getItem(TOKEN_STORAGE_KEY) ?? "",
     gistId: localStorage.getItem(GIST_ID_STORAGE_KEY) ?? "",
   };
 }
@@ -47,15 +48,15 @@ export function saveSyncConfig(config: SyncConfig): void {
   const token = config.token.trim();
   const gistId = config.gistId.trim();
 
-  if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token);
-  else localStorage.removeItem(TOKEN_STORAGE_KEY);
+  if (token) sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+  else sessionStorage.removeItem(TOKEN_STORAGE_KEY);
 
   if (gistId) localStorage.setItem(GIST_ID_STORAGE_KEY, gistId);
   else localStorage.removeItem(GIST_ID_STORAGE_KEY);
 }
 
 export function clearSyncConfig(): void {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(GIST_ID_STORAGE_KEY);
 }
 
