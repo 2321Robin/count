@@ -828,3 +828,112 @@ describe("App", () => {
     expect(localStorage.getItem("s2-capture-counter:data-corrupt")).toBe("broken json");
   });
 });
+
+describe("account login", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function accountFetchMock() {
+    return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (url === "/api/register") return new Response(JSON.stringify({ userId: 7, username: "alice", isAdmin: false }), { status: 201 });
+      if (url === "/api/login") return new Response(JSON.stringify({ userId: 7, username: "alice", isAdmin: false }), { status: 200 });
+      if (url === "/api/logout") return new Response(null, { status: 204 });
+      if (url === "/api/data/s3" && method === "PUT") return new Response(JSON.stringify({ updatedAt: "2026-08-11T02:00:00.000Z", revision: 2 }), { status: 200 });
+      if (url === "/api/data/s3") return new Response(JSON.stringify({ data: null, updatedAt: null, revision: null }), { status: 200 });
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    });
+  }
+
+  it("registers, counts in the account namespace, and auto-uploads", async () => {
+    vi.useFakeTimers();
+    const fetchMock = accountFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "登录 / 注册" }));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "没有账号？注册一个" }));
+    fireEvent.change(screen.getByLabelText("用户名"), { target: { value: "alice" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "password1" } });
+    fireEvent.click(screen.getByRole("button", { name: /^注册$/ }));
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/register", expect.objectContaining({ method: "POST" }));
+    expect(localStorage.getItem("s2-capture-counter:session")).toContain("alice");
+    expect(screen.getByText((_content, element) => element?.textContent === "已登录为 alice")).toBeInTheDocument();
+
+    const card = screen.getByRole("listitem", { name: /苞米仔/ });
+    fireEvent.click(card.querySelector("button")!); // +1
+    await act(async () => {});
+    await vi.advanceTimersByTimeAsync(800);
+    await act(async () => {});
+
+    const accountData = JSON.parse(localStorage.getItem("s3-capture-counter:7:data")!) as AppData;
+    expect(accountData.creatures.reduce((sum, creature) => sum + creature.totalEncounters, 0)).toBe(1); // +1 进了账号命名空间
+    const anonymousData = JSON.parse(localStorage.getItem("s3-capture-counter:data")!) as AppData;
+    expect(anonymousData.creatures.every((creature) => creature.totalEncounters === 0)).toBe(true); // 匿名命名空间未被污染
+    expect(fetchMock).toHaveBeenCalledWith("/api/data/s3", expect.objectContaining({ method: "PUT" }));
+    expect(screen.getByText("本机数据已自动上传到云端。")).toBeInTheDocument();
+  });
+
+  it("asks to upload anonymous data on first login and keeps it after logout", async () => {
+    vi.useFakeTimers();
+    const anonymousData = createDefaultData("s3");
+    anonymousData.creatures[0] = { ...anonymousData.creatures[0], totalEncounters: 1, currentEncounters: 1 }; // 有真实使用痕迹，才会触发迁移向导
+    localStorage.setItem("s3-capture-counter:data", JSON.stringify(anonymousData));
+    const fetchMock = accountFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "登录 / 注册" }));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "没有账号？注册一个" }));
+    fireEvent.change(screen.getByLabelText("用户名"), { target: { value: "alice" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "password1" } });
+    fireEvent.click(screen.getByRole("button", { name: /^注册$/ }));
+    await act(async () => {});
+
+    expect(screen.getByText(/把本机数据上传到账号/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "上传本机数据" }));
+    await act(async () => {});
+    expect(fetchMock).toHaveBeenCalledWith("/api/data/s3", expect.objectContaining({ method: "PUT", body: expect.stringContaining("version") }));
+
+    fireEvent.click(screen.getByRole("button", { name: "退出登录" }));
+    await act(async () => {});
+    expect(screen.getByRole("button", { name: "登录 / 注册" })).toBeInTheDocument();
+    expect(localStorage.getItem("s3-capture-counter:data")).not.toBeNull(); // 匿名数据原样保留
+    expect(localStorage.getItem("s3-capture-counter:7:data")).not.toBeNull(); // 账号数据缓存也保留
+  });
+
+  it("hides the GitHub sync form while logged in", async () => {
+    vi.useFakeTimers();
+    const fetchMock = accountFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "登录 / 注册" }));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "没有账号？注册一个" }));
+    fireEvent.change(screen.getByLabelText("用户名"), { target: { value: "alice" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "password1" } });
+    fireEvent.click(screen.getByRole("button", { name: /^注册$/ }));
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "展开多端同步" }));
+    expect(screen.queryByLabelText("GitHub Token")).not.toBeInTheDocument();
+    expect(screen.getByText(/当前使用账号同步/)).toBeInTheDocument();
+  });
+});
