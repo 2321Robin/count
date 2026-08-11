@@ -158,6 +158,10 @@ export default function App() {
     pullFromServer(seasonId).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
+        if (result.error === "拉取失败：登录已过期，请重新登录。") {
+          restoreAnonymousView("登录已过期，已退回本地模式。");
+          return;
+        }
         setMessage(result.error);
         hasHydratedRef.current = true;
         if (preHydrationDirtyRef.current) setHydrationRevision((revision) => revision + 1);
@@ -165,13 +169,15 @@ export default function App() {
       }
       const anonymousData = loadAppData(seasonId).data;
       const hasRealAnonymousData = JSON.stringify(anonymousData) !== JSON.stringify(createDefaultData(seasonId));
+      const accountLoad = loadAppData(seasonId, session.userId);
+      const accountHasData = !accountLoad.recovered && JSON.stringify(accountLoad.data) !== JSON.stringify(createDefaultData(seasonId));
       if (result.empty) {
-        if (hasRealAnonymousData && !wizardPromptedRef.current) {
+        if (hasRealAnonymousData && !accountHasData && !wizardPromptedRef.current) {
           wizardPromptedRef.current = true;
           setMigration({ kind: "upload-local" });
           return; // 等迁移向导决定后再完成水合
         }
-      } else if (hasRealAnonymousData && !wizardPromptedRef.current) {
+      } else if (hasRealAnonymousData && !accountHasData && !wizardPromptedRef.current) {
         wizardPromptedRef.current = true;
         setMigration({
           kind: "choose",
@@ -215,6 +221,10 @@ export default function App() {
         pushToServer(dataRef.current, uploadSeasonId).then((result) => {
           if (cancelled) return;
           if (!result.ok) {
+            if (result.error === "上传失败：登录已过期，请重新登录。") {
+              restoreAnonymousView("登录已过期，已退回本地模式。");
+              return;
+            }
             setMessage(result.error);
             return;
           }
@@ -397,7 +407,7 @@ export default function App() {
     setSyncBusy(true);
     try {
       if (choice === "upload-local" || choice === "use-local") {
-        const localData = loadAppData(seasonId).data;
+        const localData = dataRef.current; // 向导展示期间 data 即匿名数据（水合在向导路径未覆盖云端），dataRef 含向导期间的编辑
         const push = await pushToServer(localData, seasonId);
         if (!push.ok) {
           setMessage(push.error);
@@ -410,6 +420,7 @@ export default function App() {
         const pull = await pullFromServer(seasonId);
         if (pull.ok && !pull.empty) {
           setData(pull.data);
+          saveAppData(seasonId, pull.data, currentSession.userId); // 写入账号命名空间缓存，避免刷新后回退为空数据
           saveLastServerUpdatedAt(seasonId, currentSession.userId, pull.updatedAt);
         } else if (!pull.ok) {
           setMessage(pull.error);

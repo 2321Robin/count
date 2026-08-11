@@ -936,4 +936,77 @@ describe("account login", () => {
     expect(screen.queryByLabelText("GitHub Token")).not.toBeInTheDocument();
     expect(screen.getByText(/当前使用账号同步/)).toBeInTheDocument();
   });
+
+  it("does not re-prompt the migration wizard after a refresh (account cache initialized)", async () => {
+    vi.useFakeTimers();
+    const anonymousData = createDefaultData("s3");
+    anonymousData.creatures[0] = { ...anonymousData.creatures[0], totalEncounters: 1, currentEncounters: 1 }; // 有真实使用痕迹，才会触发迁移向导
+    localStorage.setItem("s3-capture-counter:data", JSON.stringify(anonymousData));
+    const fetchMock = accountFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+    await act(async () => {});
+
+    // 首次登录：云端为空 → 弹 upload-local 向导，完成迁移（写入账号命名空间缓存）
+    fireEvent.click(screen.getByRole("button", { name: "登录 / 注册" }));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "没有账号？注册一个" }));
+    fireEvent.change(screen.getByLabelText("用户名"), { target: { value: "alice" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "password1" } });
+    fireEvent.click(screen.getByRole("button", { name: /^注册$/ }));
+    await act(async () => {});
+    expect(screen.getByText(/把本机数据上传到账号/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "上传本机数据" }));
+    await act(async () => {});
+    expect(localStorage.getItem("s3-capture-counter:7:data")).not.toBeNull(); // 账号缓存已写
+
+    // 模拟刷新：卸载重挂载，localStorage 保留（会话 + 账号缓存），云端现在非空
+    cleanup();
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/me") return new Response(JSON.stringify({ userId: 7, username: "alice", isAdmin: false }), { status: 200 });
+      if (url === "/api/data/s3") return new Response(JSON.stringify({ data: anonymousData, updatedAt: "2026-08-11T02:00:00.000Z", revision: 2 }), { status: 200 });
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    }));
+    render(<App />);
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(screen.queryByRole("dialog", { name: "迁移本机数据" })).not.toBeInTheDocument(); // 不再弹迁移向导
+    fireEvent.click(screen.getByRole("button", { name: "alice" })); // 展开账号面板
+    await act(async () => {});
+    expect(screen.getByText((_content, element) => element?.textContent === "已登录为 alice")).toBeInTheDocument(); // 账号视图正常
+  });
+
+  it("writes the account cache when choosing cloud data in the wizard", async () => {
+    vi.useFakeTimers();
+    const anonymousData = createDefaultData("s3");
+    anonymousData.creatures[0] = { ...anonymousData.creatures[0], totalEncounters: 1, currentEncounters: 1 };
+    localStorage.setItem("s3-capture-counter:data", JSON.stringify(anonymousData));
+    const cloudData = createDefaultData("s3");
+    cloudData.creatures[0] = { ...cloudData.creatures[0], totalEncounters: 5, currentEncounters: 5 };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/register") return new Response(JSON.stringify({ userId: 7, username: "alice", isAdmin: false }), { status: 201 });
+      if (url === "/api/data/s3") return new Response(JSON.stringify({ data: cloudData, updatedAt: "2026-08-11T03:00:00.000Z", revision: 3 }), { status: 200 });
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    }));
+    render(<App />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "登录 / 注册" }));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "没有账号？注册一个" }));
+    fireEvent.change(screen.getByLabelText("用户名"), { target: { value: "alice" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "password1" } });
+    fireEvent.click(screen.getByRole("button", { name: /^注册$/ }));
+    await act(async () => {});
+
+    expect(screen.getByText(/用云端数据/)).toBeInTheDocument(); // 云端与匿名都有数据 → choose 向导
+    fireEvent.click(screen.getByRole("button", { name: "用云端数据" }));
+    await act(async () => {});
+
+    const accountData = JSON.parse(localStorage.getItem("s3-capture-counter:7:data")!) as AppData;
+    expect(accountData.creatures[0].totalEncounters).toBe(5); // 账号缓存已写入云端数据，刷新不会回退空数据
+  });
 });
