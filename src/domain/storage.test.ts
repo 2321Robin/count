@@ -4,7 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultData } from "./defaultData";
-import { loadAppData, saveAppData, S2_STORAGE_KEY, S3_STORAGE_KEY } from "./storage";
+import { loadAppData, saveAppData, S2_STORAGE_KEY, S3_STORAGE_KEY, seasonStorageKey } from "./storage";
 
 describe("storage", () => {
   beforeEach(() => {
@@ -217,5 +217,33 @@ describe("storage", () => {
 
   it("reports no recovery when storage is empty", () => {
     expect(loadAppData("s2")).toEqual({ data: { ...createDefaultData("s2"), meta: expect.objectContaining({ lastModifiedBy: "unknown" }) }, recovered: false });
+  });
+});
+
+describe("account namespace", () => {
+  beforeEach(() => {
+    const storage = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      clear: () => storage.clear(),
+      getItem: (key: string) => storage.get(key) ?? null,
+      removeItem: (key: string) => storage.delete(key),
+      setItem: (key: string, value: string) => storage.set(key, value),
+    });
+    localStorage.clear();
+  });
+
+  it("builds anonymous and per-user storage keys", () => {
+    expect(seasonStorageKey("s2", null)).toBe("s2-capture-counter:data");
+    expect(seasonStorageKey("s3", null)).toBe("s3-capture-counter:data");
+    expect(seasonStorageKey("s2", 7)).toBe("s2-capture-counter:7:data");
+    expect(seasonStorageKey("s3", 7)).toBe("s3-capture-counter:7:data");
+  });
+
+  it("loads and saves per-user data without touching the anonymous key", () => {
+    const userData = createDefaultData("s2");
+    saveAppData("s2", userData, 7);
+    expect(localStorage.getItem("s2-capture-counter:data")).toBeNull();
+    expect(loadAppData("s2", 7).data).toEqual(userData);
+    expect(loadAppData("s2").data).toEqual(createDefaultData("s2"));
   });
 });

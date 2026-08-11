@@ -124,4 +124,54 @@ describe("serverSync", () => {
     clearLastServerUpdatedAt("s2", 1);
     expect(loadLastServerUpdatedAt("s2", 1)).toBeNull();
   });
+
+  it("migrates legacy v1 payloads during pull", async () => {
+    // 手工构造 v1 形状数据（同 storage.test.ts 既有降级法），验证云端旧数据也能升级
+    const legacy = JSON.parse(JSON.stringify({
+      ...DATA,
+      version: 1,
+      giftedRecords: undefined,
+      currentRound: undefined,
+      records: [
+        { id: "r1", creatureId: "c1", creatureName: "精灵一号", date: "2026-05-24", roundEncounters: 6, totalEncountersAtRecord: 18, location: "", notes: "" },
+      ],
+    }));
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ data: legacy, updatedAt: "2026-08-11T02:00:00.000Z", revision: 1 })));
+
+    const pull = await pullFromServer("s3");
+
+    expect(pull.ok).toBe(true);
+    if (pull.ok && !pull.empty) {
+      expect(pull.data.version).toBe(5);
+      expect(pull.data.giftedRecords).toEqual([]);
+      expect(pull.data.records[0]).toMatchObject({ acquisitionNumber: 1, date: "2026-05-24T00:00:00" });
+    }
+  });
+
+  it("reports admin reset password failures from the server", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "没有权限。" }, 403)));
+    expect(await adminResetPassword("bob", "brand-new-3")).toEqual({ ok: false, error: "没有权限。" });
+
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>", { status: 500 })));
+    expect(await adminResetPassword("bob", "brand-new-3")).toEqual({ ok: false, error: "重置失败：服务器返回 500。" });
+  });
+
+  it("falls back to generic messages when the server body is not JSON", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>", { status: 200 })));
+    expect(await pullFromServer("s3")).toEqual({ ok: false, error: "拉取失败：无法连接服务器，请检查网络。" });
+    expect(await pushToServer(DATA, "s3")).toEqual({ ok: false, error: "上传失败：无法连接服务器，请检查网络。" });
+    expect(await fetchMe()).toBeNull();
+  });
+
+  it("passes through the server rate-limit message for 429s", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "操作太频繁，请 42 秒后再试。" }, 429)));
+    expect(await pullFromServer("s3")).toEqual({ ok: false, error: "操作太频繁，请 42 秒后再试。" });
+
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "操作太频繁，请 7 秒后再试。" }, 429)));
+    expect(await pushToServer(DATA, "s3")).toEqual({ ok: false, error: "操作太频繁，请 7 秒后再试。" });
+
+    // 429 但无服务端文案时落现有兜底
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({}, 429)));
+    expect(await pullFromServer("s3")).toEqual({ ok: false, error: "拉取失败：操作太频繁，请稍后再试。" });
+  });
 });

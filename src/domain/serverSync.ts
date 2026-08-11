@@ -69,7 +69,7 @@ export async function logoutAccount(): Promise<void> {
   try {
     await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
   } catch {
-    // 网络失败也继续清除本地会话；服务端会话会自然过期。
+    // 网络失败不阻断登出流程；服务端会话会自然过期。
   }
 }
 
@@ -77,7 +77,9 @@ export async function fetchMe(): Promise<Session | null> {
   try {
     const response = await fetch("/api/me", { credentials: "same-origin" });
     if (!response.ok) return null;
-    const payload = await response.json() as { userId?: unknown; username?: unknown; isAdmin?: unknown };
+    const payload = await response.json().catch(() => null) as { userId?: unknown; username?: unknown; isAdmin?: unknown } | null;
+    // 非 JSON 响应体视作无效会话，按未登录处理
+    if (!payload) return null;
     if (typeof payload.userId !== "number" || typeof payload.username !== "string") return null;
     return { userId: payload.userId, username: payload.username, isAdmin: payload.isAdmin === true };
   } catch {
@@ -106,17 +108,19 @@ export type ServerDataPull =
   | { ok: true; empty: true }
   | { ok: false; error: string };
 
-function dataError(prefix: string, status: number): string {
+function dataError(prefix: string, status: number, serverError?: unknown): string {
   if (status === 401) return `${prefix}失败：登录已过期，请重新登录。`;
-  if (status === 429) return `${prefix}失败：操作太频繁，请稍后再试。`;
+  if (status === 429) return typeof serverError === "string" ? serverError : `${prefix}失败：操作太频繁，请稍后再试。`;
   return `${prefix}失败：服务器返回 ${status}。`;
 }
 
 export async function pullFromServer(seasonId: SeasonId): Promise<ServerDataPull> {
   try {
     const response = await fetch(`/api/data/${seasonId}`, { credentials: "same-origin" });
-    if (!response.ok) return { ok: false, error: dataError("拉取", response.status) };
-    const payload = await response.json() as { data?: unknown; updatedAt?: unknown };
+    const payload = await response.json().catch(() => null) as { data?: unknown; updatedAt?: unknown; error?: unknown } | null;
+    if (!response.ok) return { ok: false, error: dataError("拉取", response.status, payload?.error) };
+    // 2xx 但响应体不是 JSON 时视为协议异常，落入外层 catch 的网络失败文案
+    if (!payload) throw new Error("invalid payload");
     if (payload.data === null || payload.data === undefined) return { ok: true, empty: true };
     if (typeof payload.updatedAt !== "string") return { ok: false, error: "服务器返回异常。" };
     const data = migrateAppData(payload.data, seasonId);
@@ -137,8 +141,10 @@ export async function pushToServer(data: AppData, seasonId: SeasonId): Promise<S
       credentials: "same-origin",
       body: JSON.stringify(data),
     });
-    if (!response.ok) return { ok: false, error: dataError("上传", response.status) };
-    const payload = await response.json() as { updatedAt?: unknown };
+    const payload = await response.json().catch(() => null) as { updatedAt?: unknown; error?: unknown } | null;
+    if (!response.ok) return { ok: false, error: dataError("上传", response.status, payload?.error) };
+    // 2xx 但响应体不是 JSON 时视为协议异常，落入外层 catch 的网络失败文案
+    if (!payload) throw new Error("invalid payload");
     if (typeof payload.updatedAt !== "string") return { ok: false, error: "服务器返回异常。" };
     return { ok: true, updatedAt: payload.updatedAt };
   } catch {
