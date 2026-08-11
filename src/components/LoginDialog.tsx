@@ -76,7 +76,7 @@ export function LoginDialog({ session, busy, onLogin, onRegister, onLogout, onRe
             <button type="submit" disabled={busy}>{mode === "login" ? "登录" : "注册"}</button>
           </div>
           <p className="muted">
-            <button type="button" className="linkButton" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+            <button type="button" className="linkButton" onClick={() => { setError(""); setMode(mode === "login" ? "register" : "login"); }}>
               {mode === "login" ? "没有账号？注册一个" : "已有账号？直接登录"}
             </button>
           </p>
