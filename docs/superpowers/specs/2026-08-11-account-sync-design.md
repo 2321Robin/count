@@ -104,7 +104,7 @@ CREATE TABLE season_data (
 - 错误统一 `{error: string}` + 恰当 HTTP 状态码（400/401/403/429/500）。
 - `register/login` 按 IP 限流（如 5 次/分钟），防爆破与机器人注册。
 - 静态文件仍由 Nginx 直接服务，API 只处理 `/api/*`。
-- 技术栈：Node 原生 `http` 或轻框架（Hono/Express 二选一，实施时定，倾向极简）+ `better-sqlite3` + `bcryptjs`。
+- 技术栈：Hono（`@hono/node-server`）——路由、JSON 解析、cookie 帮助函数开箱即用，TypeScript 类型完整，比原生 `http` 手写路由更易维护；密码哈希 `bcryptjs`，SQLite 用 `better-sqlite3`。
 
 ## 7. 同步语义（账号模式）
 
@@ -123,7 +123,7 @@ CREATE TABLE season_data (
 | 登录对话框 | 注册/登录一体表单；顶部栏右侧按钮（未登录显示「登录 / 注册」，登录后显示用户名徽标 + 下拉：退出登录、管理员「重置密码…」）；数据管理模块同步区顶部放同一样式的次入口 |
 | 会话持久化 | `fetch` 带 `credentials: "same-origin"`；页面刷新后调 `GET /api/me` 恢复会话 |
 | 云端时间戳 | 本地存 `lastServerUpdatedAt`（按赛季），供启动比较 |
-| 首次登录迁移向导 | 云端空 + 本机有匿名数据 → 问「上传本机数据到账号」（推荐）或「弃用本机数据」；两边都有 → 问用哪边（默认提示按时间比较） |
+| 首次登录迁移向导 | 云端空 + 本机有匿名数据 → 问「上传本机数据到账号」（推荐）或「弃用本机数据」；两边都有数据 → 显示本地最后修改时间与云端最后修改时间，由用户决定用哪边（本地与云端时间戳体系不同，不做自动比较） |
 | 同步适配 | 新增 `src/domain/serverSync.ts`：`pullFromServer/pushToServer`，返回形状与 `SyncResult` 一致；App.tsx 现有 hydration/debounce/`skipNextAutoUploadRef` 等逻辑复用，仅在登录态走 server 路径 |
 | GitHub 折叠 | 登录后 `DataManager` 的 GitHub Token/Gist 配置区折叠（配置保留），登出恢复 |
 
