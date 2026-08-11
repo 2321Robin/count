@@ -35,6 +35,7 @@ export function initSchema(db: Db): void {
 export function createDb(filename: string): Db {
   if (filename !== ":memory:") mkdirSync(dirname(filename), { recursive: true });
   const db = new Database(filename);
+  db.pragma("foreign_keys = ON");
   initSchema(db);
   return db;
 }

@@ -14,6 +14,12 @@ describe("db schema", () => {
     expect(tables.map((row) => row.name)).toEqual(["season_data", "sessions", "users"]);
   });
 
+  it("enforces foreign keys", () => {
+    const db = freshDb();
+    const pragma = db.pragma("foreign_keys", { simple: true }) as unknown;
+    expect(pragma).toBe(1);
+  });
+
   it("enforces one row per user per season", () => {
     const db = freshDb();
     const insertUser = db.prepare("INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)");
