@@ -5,13 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && tsc -p server && vite build",
+    "dev:server": "tsx watch server/index.ts",
     "preview": "vite preview",
+    "start:server": "node server/dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.0",
     "@vitejs/plugin-react": "latest",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.11.1",
+    "hono": "^4.13.1",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest",
@@ -21,10 +27,12 @@
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
     "@testing-library/user-event": "latest",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^25.9.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "jsdom": "26.1.0",
+    "tsx": "^4.23.12",
     "vitest": "latest"
   }
 }
