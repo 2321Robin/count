@@ -6,7 +6,7 @@ export type UserRow = { id: number; username: string; password_hash: string; is_
 export type PublicUser = { userId: number; username: string; isAdmin: boolean };
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const USERNAME_PATTERN = /^[\p{L}\p{N}_-]{2,32}$/u;
+const USERNAME_PATTERN = /^[\p{L}\p{N}_]{2,32}$/u;
 
 export function validateUsername(username: string): string | null {
   if (!USERNAME_PATTERN.test(username)) return "用户名需为 2–32 位字母、数字、下划线或中文。";
@@ -15,7 +15,7 @@ export function validateUsername(username: string): string | null {
 
 export function validatePassword(password: string): string | null {
   if (password.length < 8) return "密码至少 8 位。";
-  if (password.length > 72) return "密码不能超过 72 位。";
+  if (Buffer.byteLength(password, "utf8") > 72) return "密码不能超过 72 位。";
   return null;
 }
 
@@ -47,8 +47,15 @@ export async function registerUser(db: Db, username: string, password: string): 
   if (existing) return { ok: false, error: "用户名已被注册。" };
   const passwordHash = await hashPassword(password);
   const createdAt = new Date().toISOString();
-  const result = db.prepare("INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (?, ?, 0, ?)").run(name, passwordHash, createdAt);
-  return { ok: true, user: { userId: Number(result.lastInsertRowid), username: name, isAdmin: false } };
+  try {
+    const result = db.prepare("INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (?, ?, 0, ?)").run(name, passwordHash, createdAt);
+    return { ok: true, user: { userId: Number(result.lastInsertRowid), username: name, isAdmin: false } };
+  } catch (err) {
+    if ((err as { code?: unknown }).code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return { ok: false, error: "用户名已被注册。" };
+    }
+    throw err;
+  }
 }
 
 export async function verifyLogin(db: Db, username: string, password: string): Promise<PublicUser | null> {
@@ -62,6 +69,7 @@ export function insertSession(db: Db, userId: number): string {
   const token = createSessionToken();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_TTL_MS).toISOString();
+  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(now.toISOString());
   db.prepare("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
     .run(hashSessionToken(token), userId, now.toISOString(), expiresAt);
   return token;
