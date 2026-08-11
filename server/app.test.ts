@@ -110,6 +110,10 @@ describe("counter api", () => {
     expect((await app.request("/api/data/s3", { method: "PUT", headers: { ...headers, ...auth }, body: "not json" })).status).toBe(400);
     expect((await app.request("/api/data/s3", { method: "PUT", headers: { ...headers, ...auth }, body: JSON.stringify({ version: 5 }) })).status).toBe(400);
     expect((await app.request("/api/data/s3", { method: "PUT", headers: { ...headers, ...auth }, body: JSON.stringify({ version: 5, creatures: [] }, null, 0).padEnd(2_000_001, "x") })).status).toBe(413);
+    // CJK 字符 UTF-8 为 3 字节：raw.length（UTF-16 计数）远小于 2MB 但字节数超限，必须仍按字节判 413
+    const chineseBig = JSON.stringify({ version: 5, creatures: [], big: "中".repeat(700_000) });
+    expect(Buffer.byteLength(chineseBig, "utf8")).toBeGreaterThan(2_000_000);
+    expect((await app.request("/api/data/s3", { method: "PUT", headers: { ...headers, ...auth }, body: chineseBig })).status).toBe(413);
   });
 
   it("requires login for data endpoints", async () => {
@@ -149,5 +153,20 @@ describe("counter api", () => {
     const third = await app.request("/api/register", { method: "POST", headers, body });
     expect(third.status).toBe(429);
     expect((await third.json() as { error: string }).error).toContain("操作太频繁");
+  });
+
+  it("prefers X-Real-IP over forged X-Forwarded-For in production", async () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const { app } = freshApp({ limit: 2, windowMs: 60_000 });
+      const body = JSON.stringify({ username: "bob", password: "password1" });
+      const req = (xff: string) => app.request("/api/register", { method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": xff, "X-Real-IP": "203.0.113.9" }, body });
+      expect((await req("10.0.0.1")).status).toBe(201);
+      expect((await req("10.0.0.2")).status).toBe(400); // 重复用户名，仍计数
+      expect((await req("10.0.0.3")).status).toBe(429); // X-Forwarded-For 每次都不同，限流仍按 X-Real-IP 计数
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
   });
 });

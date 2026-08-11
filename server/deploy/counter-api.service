@@ -1,0 +1,17 @@
+[Unit]
+Description=Capture Counter API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/home/www/counter-api
+Environment=NODE_ENV=production
+Environment=PORT=8787
+Environment=COUNTER_DB_PATH=/home/www/counter-data/db.sqlite
+ExecStart=/usr/bin/node /home/www/counter-api/server/dist/index.js
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

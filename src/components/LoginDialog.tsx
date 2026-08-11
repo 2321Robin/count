@@ -56,7 +56,7 @@ export function LoginDialog({ session, busy, onLogin, onRegister, onLogout, onRe
       {session ? (
         <div className="accountInfo">
           <p>已登录为 <strong>{session.username}</strong>{session.isAdmin ? "（管理员）" : ""}</p>
-          <button type="button" className="ghost" disabled={busy} onClick={() => { void onLogout(); }}>退出登录</button>
+          <button type="button" className="ghost" disabled={busy} onClick={() => { setError(""); void onLogout(); }}>退出登录</button>
           {session.isAdmin && (
             <details open={resetOpen} onToggle={(event) => setResetOpen(event.currentTarget.open)}>
               <summary>重置用户密码</summary>

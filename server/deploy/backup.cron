@@ -1,0 +1,2 @@
+0 3 * * * sqlite3 /home/www/counter-data/db.sqlite ".backup '/home/www/counter-data/backups/db-$(date +\%F-\%H\%M).sqlite'" >> /home/www/counter-data/backups/backup.log 2>&1
+0 3 * * * find /home/www/counter-data/backups -name 'db-*.sqlite' -mtime +30 -delete

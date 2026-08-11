@@ -32,6 +32,10 @@ export function createApp(db: Db, options: AppOptions = {}) {
   const isProd = process.env.NODE_ENV === "production";
 
   function clientIp(c: Context): string {
+    // 生产环境部署在 nginx 反代后，nginx 已用 X-Real-IP 覆写真实客户端地址；
+    // 优先取它，避免攻击者伪造 X-Forwarded-For 打空限流窗口。
+    const realIp = c.req.header("x-real-ip");
+    if (isProd && realIp) return realIp.trim();
     return c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
   }
 
@@ -97,7 +101,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
     const season = c.req.param("season");
     if (!isSeasonId(season)) return c.json({ error: "无效的赛季。" }, 400);
     const raw = await c.req.text();
-    if (raw.length > MAX_DATA_BYTES) return c.json({ error: "数据过大。" }, 413);
+    if (Buffer.byteLength(raw, "utf8") > MAX_DATA_BYTES) return c.json({ error: "数据过大。" }, 413);
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
