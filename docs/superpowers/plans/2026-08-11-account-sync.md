@@ -966,6 +966,8 @@ describe("serverSync", () => {
 ```
 
 （`DATA` 对象加 `: AppData` 类型标注并通过 `import type { AppData } from "./types"` 引入，避免 `records: []` 等被推断为 `never[]` 导致断言不通过。）
+
+```ts
   it("registers and returns the session", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ userId: 7, username: "alice", isAdmin: false }, 201)));
     const result = await registerAccount("alice", "password1");
