@@ -39,6 +39,15 @@ export function createApp(db: Db, options: AppOptions = {}) {
     return c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
   }
 
+  function isHttpsRequest(c: Context): boolean {
+    // nginx 反代后真实协议经 X-Forwarded-Proto 透传（见 deploy/nginx-api.conf）；
+    // 只在真实 TLS 连接上打 Secure cookie，否则 HTTP 环境（当前站点无 HTTPS）下
+    // 浏览器会拒绝存储 Secure cookie，导致登录后所有请求 401。
+    const proto = c.req.header("x-forwarded-proto");
+    if (proto) return proto.split(",")[0]?.trim() === "https";
+    return c.req.url.startsWith("https://");
+  }
+
   const requireUser = async (c: Context<Env>, next: Next) => {
     const user = getUserBySessionToken(db, getCookie(c, SESSION_COOKIE) ?? "");
     if (!user) return c.json({ error: "未登录。" }, 401);
@@ -62,7 +71,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
     const result = await registerUser(db, username, password);
     if (!result.ok) return c.json({ error: result.error }, 400);
     const token = insertSession(db, result.user.userId);
-    setCookie(c, SESSION_COOKIE, token, { httpOnly: true, sameSite: "Lax", secure: isProd, maxAge: SESSION_MAX_AGE, path: "/" });
+    setCookie(c, SESSION_COOKIE, token, { httpOnly: true, sameSite: "Lax", secure: isProd && isHttpsRequest(c), maxAge: SESSION_MAX_AGE, path: "/" });
     return c.json({ userId: result.user.userId, username: result.user.username, isAdmin: result.user.isAdmin }, 201);
   });
 
@@ -75,7 +84,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
     const user = await verifyLogin(db, username, password);
     if (!user) return c.json({ error: "用户名或密码错误。" }, 401);
     const token = insertSession(db, user.userId);
-    setCookie(c, SESSION_COOKIE, token, { httpOnly: true, sameSite: "Lax", secure: isProd, maxAge: SESSION_MAX_AGE, path: "/" });
+    setCookie(c, SESSION_COOKIE, token, { httpOnly: true, sameSite: "Lax", secure: isProd && isHttpsRequest(c), maxAge: SESSION_MAX_AGE, path: "/" });
     return c.json({ userId: user.userId, username: user.username, isAdmin: user.isAdmin });
   });
 

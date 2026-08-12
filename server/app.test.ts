@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { createDb } from "./db.js";
 import type { Db } from "./db.js";
@@ -65,6 +65,30 @@ describe("counter api", () => {
     const goodLogin = await app.request("/api/login", { method: "POST", headers, body });
     expect(goodLogin.status).toBe(200);
     expect(sessionTokenFrom(goodLogin).length).toBeGreaterThan(0);
+  });
+
+  it("sets Secure cookie only on real https requests in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const { app } = freshApp();
+      const headers = { "Content-Type": "application/json" };
+      const body = JSON.stringify({ username: "alice", password: "password1" });
+
+      const overHttp = await app.request("/api/register", { method: "POST", headers, body });
+      expect(overHttp.status).toBe(201);
+      expect(overHttp.headers.get("set-cookie")).not.toContain("Secure");
+
+      const overHttps = await app.request("/api/register", {
+        method: "POST",
+        headers: { ...headers, "X-Forwarded-Proto": "https" },
+        body: JSON.stringify({ username: "bob", password: "password1" }),
+      });
+      expect(overHttps.status).toBe(201);
+      expect(overHttps.headers.get("set-cookie")).toContain("Secure");
+      expect(overHttps.headers.get("set-cookie")).toContain("SameSite=Lax");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("round-trips season data per user", async () => {
